@@ -1,3 +1,5 @@
+#ifdef DEBUG
+
 #ifndef ArduinoMotorShieldR3_h
 #define ArduinoMotorShieldR3_h
 
@@ -32,5 +34,7 @@ class ArduinoMotorShieldR3
     unsigned char PWM_B;
     unsigned char CS_B;*/
 };
+
+#endif
 
 #endif

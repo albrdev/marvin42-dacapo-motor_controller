@@ -1,3 +1,5 @@
+#ifdef DEBUG
+
 #include "ArduinoMotorShieldR3.h"
 
 // Constructors ////////////////////////////////////////////////////////////////
@@ -33,3 +35,5 @@ unsigned int ArduinoMotorShieldR3::getM1CurrentMilliamps() { return 0U; }
 // TODO: check this calculation
 // Return motor 2 current value in milliamps.
 unsigned int ArduinoMotorShieldR3::getM2CurrentMilliamps() { return 0U; }
+
+#endif
