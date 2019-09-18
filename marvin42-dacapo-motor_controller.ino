@@ -11,6 +11,7 @@
 #include "src/custom_packets.h"
 
 ArduinoMotorShieldR3 md;
+#define MOTORSPEED_MAX 400
 
 static char tmpbuf[64 + 1];
 static const char* hexstr(const void* const data, const size_t size)
@@ -81,12 +82,14 @@ void loop()
                 memcpy(&left, &pkt->left, sizeof(pkt->left));
                 memcpy(&right, &pkt->right, sizeof(pkt->right));
 
-                md.setM1Speed(400 * left);
-                md.setM2Speed(400 * right);
+                md.setM1Speed(MOTORSPEED_MAX * left);
+                md.setM2Speed(MOTORSPEED_MAX * right);
                 break;
             }
             case CPT_MOTORSTOP:
             {
+                Serial.println("Stop motor");
+                md.setBrakes();
                 break;
             }
             default:
