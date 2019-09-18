@@ -17,77 +17,85 @@ ArduinoMotorShieldR3 motor;
 
 void setup()
 {
+    Serial.print("Initializing...");
+
     Serial.begin(115200);
-    Serial.println("Arduino Motor Shield R3");
     motor.init();
+
+    Serial.println("Done");
 }
 
 uint8_t readBuffer[128];
 size_t readSize;
-void loop()
+void HandleSerialInput()
 {
-    if(Serial.available())
+    if(!Serial.available())
+        return;
+
+    readSize = Serial.readBytes(readBuffer, sizeof(readBuffer));
+
+    spprintf("Raw: size=%zu, hex=%s\n", readSize, hexstr(readBuffer, readSize));
+
+    if(readSize < sizeof(packet_header_t))
     {
-        readSize = Serial.readBytes(readBuffer, sizeof(readBuffer));
+        spprintf("Header size failed: %zu\n", readSize);
+        return;
+    }
 
-        spprintf("Raw: size=%zu, hex=%s\n", readSize, hexstr(readBuffer, readSize));
+    const packet_header_t* hdr = (const packet_header_t*)readBuffer;
+    uint16_t chksum = mkcrc16((const uint8_t * const)hdr + sizeof(hdr->chksum_header), sizeof(*hdr) - sizeof(hdr->chksum_header));
+    spprintf("Header:   chksum_header=%hX, chksum_data=%hX, type=%hhu, size=%hu (chksum=%hX, hex=%s)\n", hdr->chksum_header, hdr->chksum_data, hdr->type, hdr->size, chksum, hexstr(readBuffer, sizeof(*hdr)));
 
-        if(readSize < sizeof(packet_header_t))
+    if(packet_verifyheader(hdr) == 0)
+    {
+        spprintf("Header checksum failed: %hu / %hu\n", hdr->chksum_header, chksum);
+        return;
+    }
+
+    if(readSize < sizeof(*hdr) + hdr->size)
+    {
+        spprintf("Content size failed: %zu\n", readSize);
+        return;
+    }
+
+    chksum = mkcrc16((const uint8_t * const)hdr + sizeof(*hdr), hdr->size);
+    spprintf("Content:  chksum_data=%hX, size=%zu (chksum=%hX, hex=%s)\n", hdr->chksum_data, hdr->size, chksum, hexstr((const uint8_t * const)readBuffer + sizeof(*hdr), hdr->size));
+    if(packet_verifydata(hdr) == 0)
+    {
+        spprintf("Content checksum failed: %hu / %hu\n", hdr->chksum_data, chksum);
+        return;
+    }
+
+    switch(hdr->type)
+    {
+        case CPT_MOTORRUN:
         {
-            spprintf("Header size failed: %zu\n", readSize);
-            return;
+            const packet_motorrun_t* pkt = (const packet_motorrun_t*)readBuffer;
+            float left, right;
+            memcpy(&left, &pkt->left, sizeof(pkt->left));
+            memcpy(&right, &pkt->right, sizeof(pkt->right));
+
+            spprintf("CPT_MOTORRUN: left=%.2f, right=%.2f\n", left, right);
+
+            motor.setM1Speed(MOTORSPEED_MAX * left);
+            motor.setM2Speed(MOTORSPEED_MAX * right);
+            break;
         }
-
-        packet_header_t* hdr = (packet_header_t*)readBuffer;
-        uint16_t chksum = mkcrc16((uint8_t*)hdr + sizeof(hdr->chksum_header), sizeof(*hdr) - sizeof(hdr->chksum_header));
-        spprintf("Header:   chksum_header=%hX, chksum_data=%hX, type=%hhu, size=%hu (chksum=%hX, hex=%s)\n", hdr->chksum_header, hdr->chksum_data, hdr->type, hdr->size, chksum, hexstr(readBuffer, sizeof(*hdr)));
-
-        if(packet_verifyheader(hdr) == 0)
+        case CPT_MOTORSTOP:
         {
-            spprintf("Header checksum failed: %hu / %hu\n", hdr->chksum_header, chksum);
-            return;
+            spprintf("CPT_MOTORSTOP\n");
+            motor.setBrakes();
+            break;
         }
-
-        if(readSize < sizeof(*hdr) + hdr->size)
+        default:
         {
-            spprintf("Content size failed: %zu\n", readSize);
-            return;
-        }
-
-        chksum = mkcrc16((uint8_t*)hdr + sizeof(*hdr), hdr->size);
-        spprintf("Content:  chksum_data=%hX, size=%zu (chksum=%hX, hex=%s)\n", hdr->chksum_data, hdr->size, chksum, hexstr((uint8_t*)readBuffer + sizeof(*hdr), hdr->size));
-        if(packet_verifydata(hdr) == 0)
-        {
-            spprintf("Content checksum failed: %hu / %hu\n", hdr->chksum_data, chksum);
-            return;
-        }
-
-        switch(hdr->type)
-        {
-            case CPT_MOTORRUN:
-            {
-                packet_motorrun_t* pkt = (packet_motorrun_t*)readBuffer;
-                float left, right;
-                memcpy(&left, &pkt->left, sizeof(pkt->left));
-                memcpy(&right, &pkt->right, sizeof(pkt->right));
-
-                spprintf("CPT_MOTORRUN: left=%.2f, right=%.2f\n", left, right);
-
-                motor.setM1Speed(MOTORSPEED_MAX * left);
-                motor.setM2Speed(MOTORSPEED_MAX * right);
-                break;
-            }
-            case CPT_MOTORSTOP:
-            {
-                spprintf("CPT_MOTORSTOP\n");
-                motor.setBrakes();
-                break;
-            }
-            default:
-            {
-                spprintf("Unknown packet type: %hhu\n", hdr->type);
-                break;
-            }
+            spprintf("Unknown packet type: %hhu\n", hdr->type);
+            break;
         }
     }
+}
+
+void loop()
+{
+    HandleSerialInput();
 }
