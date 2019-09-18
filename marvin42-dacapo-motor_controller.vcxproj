@@ -119,10 +119,16 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\ArduinoMotorShieldR3.h" />
+    <ClInclude Include="src\crc.h" />
+    <ClInclude Include="src\custom_packets.h" />
+    <ClInclude Include="src\packet.h" />
     <ClInclude Include="__vm\.marvin42-dacapo-motor_controller.vsarduino.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\ArduinoMotorShieldR3.cpp" />
+    <ClCompile Include="src\crc.c" />
+    <ClCompile Include="src\custom_packets.c" />
+    <ClCompile Include="src\packet.c" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
