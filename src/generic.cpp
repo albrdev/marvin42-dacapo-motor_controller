@@ -1,7 +1,10 @@
 #include "generic.hpp"
 #include <stdarg.h>     /* vsnprintf() */
+#ifdef __AVR__
 #include <Arduino.h>    /* Serial, min() */
+#endif
 
+#ifdef __AVR__
 static char _format_buf[128 + 1];
 int spprintf(const char* const fmt, ...)
 {
@@ -24,6 +27,7 @@ int spprintf(SoftwareSerial& serialPort, const char* const fmt, ...)
     serialPort.print(_format_buf);
     return len;
 }
+#endif
 
 #define HEXSTRBUF_SIZE 64
 char const _hexchar_map[16] = { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F' };
