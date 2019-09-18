@@ -1,5 +1,6 @@
-//#define DEBUG
+#include <stdarg.h>
 
+//#define DEBUG
 #ifndef DEBUG
 #include "ArduinoMotorShieldR3.h"
 #else // Define dummy class if in debug/development mode
@@ -9,20 +10,10 @@
 #include "src/crc.h"
 #include "src/packet.h"
 #include "src/custom_packets.h"
+#include "src/generic.hpp"
 
 ArduinoMotorShieldR3 md;
 #define MOTORSPEED_MAX 400
-
-static char tmpbuf[64 + 1];
-static const char* hexstr(const void* const data, const size_t size)
-{
-    const unsigned char* ptr = (const unsigned char*)data;
-    for(size_t i = 0U; i < size; i++)
-    {
-        snprintf(tmpbuf + (i * 2), 2 + 1, "%02hhX", ptr[i]);
-    }
-    return tmpbuf;
-}
 
 void setup()
 {
@@ -31,56 +22,56 @@ void setup()
     md.init();
 }
 
-uint8_t buffer[128];
-size_t len;
+uint8_t readBuffer[128];
+size_t readSize;
 void loop()
 {
     if(Serial.available())
     {
-        len = Serial.readBytes(buffer, sizeof(buffer));
-        if(len < sizeof(packet_header_t))
+        readSize = Serial.readBytes(readBuffer, sizeof(readBuffer));
+
+        spprintf("Raw: size=%zu, hex=%s\n", readSize, hexstr(readBuffer, readSize));
+
+        if(readSize < sizeof(packet_header_t))
         {
-            Serial.println("Insufficient header");
+            spprintf("Header size failed: %zu\n", readSize);
             return;
         }
 
-        packet_header_t* hdr = (packet_header_t*)buffer;
+        packet_header_t* hdr = (packet_header_t*)readBuffer;
+        uint16_t chksum = mkcrc16((uint8_t*)hdr + sizeof(hdr->chksum_header), sizeof(*hdr) - sizeof(hdr->chksum_header));
+        spprintf("Header:   chksum_header=%hX, chksum_data=%hX, type=%hhu, size=%hu (chksum=%hX, hex=%s)\n", hdr->chksum_header, hdr->chksum_data, hdr->type, hdr->size, chksum, hexstr(readBuffer, sizeof(*hdr)));
 
         if(packet_verifyheader(hdr) == 0)
         {
-            Serial.println("Header failed");
+            spprintf("Header checksum failed: %hu / %hu\n", hdr->chksum_header, chksum);
             return;
         }
 
-        Serial.println("Header OK");
-        if(len < hdr->size)
+        if(readSize < sizeof(*hdr) + hdr->size)
         {
-            Serial.println("Insufficient data");
+            spprintf("Content size failed: %zu\n", readSize);
             return;
         }
 
+        chksum = mkcrc16((uint8_t*)hdr + sizeof(*hdr), hdr->size);
+        spprintf("Content:  chksum_data=%hX, size=%zu (chksum=%hX, hex=%s)\n", hdr->chksum_data, hdr->size, chksum, hexstr((uint8_t*)readBuffer + sizeof(*hdr), hdr->size));
         if(packet_verifydata(hdr) == 0)
         {
-            Serial.println("Data Failed");
+            spprintf("Content checksum failed: %hu / %hu\n", hdr->chksum_data, chksum);
             return;
         }
-
-        Serial.println("Data OK");
-
-        Serial.print("Data: ");
-        Serial.println(hexstr(buffer, len));
-        Serial.print("Size: ");
-        Serial.println(len);
 
         switch(hdr->type)
         {
             case CPT_MOTORRUN:
             {
-                Serial.println("Run motor");
-                packet_motorrun_t* pkt = (packet_motorrun_t*)buffer;
+                packet_motorrun_t* pkt = (packet_motorrun_t*)readBuffer;
                 float left, right;
                 memcpy(&left, &pkt->left, sizeof(pkt->left));
                 memcpy(&right, &pkt->right, sizeof(pkt->right));
+
+                spprintf("CPT_MOTORRUN: left=%.2f, right=%.2f\n", left, right);
 
                 md.setM1Speed(MOTORSPEED_MAX * left);
                 md.setM2Speed(MOTORSPEED_MAX * right);
@@ -88,66 +79,15 @@ void loop()
             }
             case CPT_MOTORSTOP:
             {
-                Serial.println("Stop motor");
+                spprintf("CPT_MOTORSTOP\n");
                 md.setBrakes();
                 break;
             }
             default:
             {
-                Serial.print("Unknown type: ");
-                Serial.println(hdr->type);
+                spprintf("Unknown packet type: %hhu\n", hdr->type);
                 break;
             }
         }
     }
-
-    /*Serial.println("M1 Speed 100% Forward");
-    md.setM1Speed(400);
-    Serial.println("M2 Speed 100% Forward");
-    md.setM2Speed(400);
-    Serial.print("M1 current: ");
-    Serial.println(md.getM1CurrentMilliamps());
-    Serial.print("M2 current: ");
-    Serial.println(md.getM2CurrentMilliamps());
-    delay(2000);
-
-    Serial.println("M1 Speed 100% Backward");
-    md.setM1Speed(-400);
-    Serial.println("M2 Speed 100% Backward");
-    md.setM2Speed(-400);
-    Serial.print("M1 current: ");
-    Serial.println(md.getM1CurrentMilliamps());
-    Serial.print("M2 current: ");
-    Serial.println(md.getM2CurrentMilliamps());
-    delay(2000);
-
-    Serial.println("M1 Speed 50% Forward");
-    md.setM1Speed(200);
-    Serial.println("M2 Speed 50% Forward");
-    md.setM2Speed(200);
-    Serial.print("M1 current: ");
-    Serial.println(md.getM1CurrentMilliamps());
-    Serial.print("M2 current: ");
-    Serial.println(md.getM2CurrentMilliamps());
-    delay(2000);
-
-    Serial.println("M1 Speed 50% Backward");
-    md.setM1Speed(-200);
-    Serial.println("M2 Speed 50% Backward");
-    md.setM2Speed(-200);
-    Serial.print("M1 current: ");
-    Serial.println(md.getM1CurrentMilliamps());
-    Serial.print("M2 current: ");
-    Serial.println(md.getM2CurrentMilliamps());
-    delay(2000);
-
-    Serial.println("M1 Speed 0%");
-    md.setM1Speed(0);
-    Serial.println("M2 Speed 0%");
-    md.setM2Speed(0);
-    Serial.print("M1 current: ");
-    Serial.println(md.getM1CurrentMilliamps());
-    Serial.print("M2 current: ");
-    Serial.println(md.getM2CurrentMilliamps());
-    delay(2000);*/
 }
