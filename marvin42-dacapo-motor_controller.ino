@@ -12,14 +12,14 @@
 #include "src/custom_packets.h"
 #include "src/generic.hpp"
 
-ArduinoMotorShieldR3 md;
+ArduinoMotorShieldR3 motor;
 #define MOTORSPEED_MAX 400
 
 void setup()
 {
     Serial.begin(115200);
     Serial.println("Arduino Motor Shield R3");
-    md.init();
+    motor.init();
 }
 
 uint8_t readBuffer[128];
@@ -73,14 +73,14 @@ void loop()
 
                 spprintf("CPT_MOTORRUN: left=%.2f, right=%.2f\n", left, right);
 
-                md.setM1Speed(MOTORSPEED_MAX * left);
-                md.setM2Speed(MOTORSPEED_MAX * right);
+                motor.setM1Speed(MOTORSPEED_MAX * left);
+                motor.setM2Speed(MOTORSPEED_MAX * right);
                 break;
             }
             case CPT_MOTORSTOP:
             {
                 spprintf("CPT_MOTORSTOP\n");
-                md.setBrakes();
+                motor.setBrakes();
                 break;
             }
             default:
