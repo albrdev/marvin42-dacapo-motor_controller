@@ -1,3 +1,5 @@
 [submodule "src"]
 	path = src
 	url = git@github.com:albrdev/marvin42-dacapo-shared_libraries.git
+	url = https://github.com/albrdev/marvin42-dacapo-shared_libraries.git
+	branch = master

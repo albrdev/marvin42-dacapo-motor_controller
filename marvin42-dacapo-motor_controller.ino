@@ -2,9 +2,9 @@
 
 //#define DEBUG
 #ifndef DEBUG
-#include "ArduinoMotorShieldR3.h"
+#include <ArduinoMotorShieldR3.h>
 #else // Define dummy class if in debug/development mode
-#include "src/ArduinoMotorShieldR3.h"
+#include "ArduinoMotorShieldR3.h"
 #endif
 
 #include "src/crc.h"

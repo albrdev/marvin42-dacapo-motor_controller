@@ -118,7 +118,18 @@
     <Text Include="LICENSE.txt" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="src\crc.h" />
+    <ClInclude Include="src\custom_packets.h" />
+    <ClInclude Include="src\generic.hpp" />
+    <ClInclude Include="src\packet.h" />
     <ClInclude Include="__vm\.marvin42-dacapo-motor_controller.vsarduino.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="ArduinoMotorShieldR3.cpp" />
+    <ClCompile Include="src\crc.c" />
+    <ClCompile Include="src\custom_packets.c" />
+    <ClCompile Include="src\generic.cpp" />
+    <ClCompile Include="src\packet.c" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
