@@ -15,12 +15,26 @@
 ArduinoMotorShieldR3 motor;
 #define MOTORSPEED_MAX 400
 
+#define D4 4
+#define D7 7
+
+void SetStatus(const bool status)
+{
+    digitalWrite(D4, status ? HIGH : LOW);
+    digitalWrite(D7, !status ? HIGH : LOW);
+}
+
 void setup()
 {
+    delay(2500);
     Serial.print("Initializing...");
 
     Serial.begin(115200);
     motor.init();
+
+    pinMode(D4, OUTPUT);
+    pinMode(D7, OUTPUT);
+    SetStatus(true);
 
     Serial.println("Done");
 }
@@ -33,36 +47,48 @@ void HandleSerialInput()
         return;
 
     readSize = Serial.readBytes(readBuffer, sizeof(readBuffer));
-
-    spprintf("Raw: size=%zu, hex=%s\n", readSize, hexstr(readBuffer, readSize));
+    Serial.print("Raw: size="); Serial.print(readSize); Serial.print(", hex="); Serial.println(hexstr(readBuffer, readSize));
 
     if(readSize < sizeof(packet_header_t))
     {
-        spprintf("Header size failed: %zu\n", readSize);
+        Serial.print("Header size failed: ");
+        Serial.print(readSize); Serial.print(" / "); Serial.println(sizeof(packet_header_t));
+        SetStatus(false);
         return;
     }
 
     const packet_header_t* hdr = (const packet_header_t*)readBuffer;
     uint16_t chksum = mkcrc16((const uint8_t * const)hdr + sizeof(hdr->chksum_header), sizeof(*hdr) - sizeof(hdr->chksum_header));
-    spprintf("Header:   chksum_header=%hX, chksum_data=%hX, type=%hhu, size=%hu (chksum=%hX, hex=%s)\n", hdr->chksum_header, hdr->chksum_data, hdr->type, hdr->size, chksum, hexstr(readBuffer, sizeof(*hdr)));
+    Serial.print("Header: chksum_header="); Serial.print(hexstr(&hdr->chksum_header, sizeof(hdr->chksum_header))); Serial.print(", chksum_data="); Serial.print(hexstr(&hdr->chksum_data, sizeof(hdr->chksum_data)));
+    Serial.print(", type="); Serial.print(hdr->type); Serial.print(", size="); Serial.print(hdr->size);
+    Serial.print(" (chksum="); Serial.print(hexstr(&chksum, sizeof(chksum))); Serial.print(", hex="); Serial.print(hexstr(readBuffer, sizeof(*hdr)));
+    Serial.println(")");
 
     if(packet_verifyheader(hdr) == 0)
     {
-        spprintf("Header checksum failed: %hu / %hu\n", hdr->chksum_header, chksum);
+        Serial.print("Header checksum failed: ");
+        Serial.print(hdr->chksum_header); Serial.print(", "); Serial.println(chksum);
+        SetStatus(false);
         return;
     }
 
     if(readSize < sizeof(*hdr) + hdr->size)
     {
-        spprintf("Content size failed: %zu\n", readSize);
+        Serial.print("Content size failed: ");
+        Serial.print(readSize); Serial.print(" / "); Serial.println(sizeof(*hdr) + hdr->size);
+        SetStatus(false);
         return;
     }
 
     chksum = mkcrc16((const uint8_t * const)hdr + sizeof(*hdr), hdr->size);
-    spprintf("Content:  chksum_data=%hX, size=%zu (chksum=%hX, hex=%s)\n", hdr->chksum_data, hdr->size, chksum, hexstr((const uint8_t * const)readBuffer + sizeof(*hdr), hdr->size));
+    Serial.print("Content: chksum_header="); Serial.print(hexstr(&hdr->chksum_data, sizeof(hdr->chksum_data))); Serial.print(", size="); Serial.print(hdr->size);
+    Serial.print(" (chksum="); Serial.print(hexstr(&chksum, sizeof(chksum))); Serial.print(", hex="); Serial.print(hexstr((const uint8_t * const)readBuffer + sizeof(*hdr), hdr->size));
+    Serial.println(")");
     if(packet_verifydata(hdr) == 0)
     {
-        spprintf("Content checksum failed: %hu / %hu\n", hdr->chksum_data, chksum);
+        Serial.print("Content checksum failed: ");
+        Serial.print(hdr->chksum_data); Serial.print(" / "); Serial.println(chksum);
+        SetStatus(false);
         return;
     }
 
@@ -75,7 +101,7 @@ void HandleSerialInput()
             memcpy(&left, &pkt->left, sizeof(pkt->left));
             memcpy(&right, &pkt->right, sizeof(pkt->right));
 
-            spprintf("CPT_MOTORRUN: left=%.2f, right=%.2f\n", left, right);
+            Serial.print("CPT_MOTORRUN: left="); Serial.print(left); Serial.print(", right="); Serial.println(right);
 
             motor.setM1Speed(MOTORSPEED_MAX * left);
             motor.setM2Speed(MOTORSPEED_MAX * right);
@@ -83,16 +109,19 @@ void HandleSerialInput()
         }
         case CPT_MOTORSTOP:
         {
-            spprintf("CPT_MOTORSTOP\n");
+            Serial.println("CPT_MOTORSTOP");
             motor.setBrakes();
             break;
         }
         default:
         {
-            spprintf("Unknown packet type: %hhu\n", hdr->type);
+            Serial.print("Unknown packet type: "); Serial.println(hdr->type);
             break;
         }
     }
+
+    Serial.println("");
+    SetStatus(true);
 }
 
 void loop()
