@@ -24,7 +24,7 @@ void SetStatus(const bool status)
     digitalWrite(D7, !status ? HIGH : LOW);
 }
 
-void setup()
+void setup(void)
 {
     delay(2500);
     Serial.print("Initializing...");
@@ -39,29 +39,54 @@ void setup()
     Serial.println("Done");
 }
 
-uint8_t readBuffer[128];
+uint8_t readBuffer[512];
 size_t readSize;
-void HandleSerialInput()
+
+void HandleSerialInput(void)
 {
     if(!Serial.available())
         return;
 
     readSize = Serial.readBytes(readBuffer, sizeof(readBuffer));
     Serial.print("Raw: size="); Serial.print(readSize); Serial.print(", hex="); Serial.println(hexstr(readBuffer, readSize));
+    const uint8_t* currentOffset = readBuffer;
+    int incrementSize;
 
-    if(readSize < sizeof(packet_header_t))
+    Serial.println("BUFFER BEGIN");
+    const uint8_t* const readBufferEnd = &readBuffer[readSize];
+    while(currentOffset < readBufferEnd)
     {
-        Serial.print("Header size failed: ");
-        Serial.print(readSize); Serial.print(" / "); Serial.println(sizeof(packet_header_t));
-        SetStatus(false);
-        return;
+        if(currentOffset + sizeof(packet_header_t) >= readBufferEnd)
+        {
+            Serial.print("Header size failed: ");
+            Serial.print(readSize); Serial.print(" / "); Serial.println(sizeof(packet_header_t));
+            SetStatus(false);
+            return;
+        }
+
+        incrementSize = HandlePacket(currentOffset);
+        if(incrementSize <= 0)
+        {
+            Serial.println("Skipping current buffer data");
+            Serial.println("");
+            return;
+        }
+
+        Serial.println("");
+        currentOffset += incrementSize;
     }
 
-    const packet_header_t* hdr = (const packet_header_t*)readBuffer;
+    Serial.println("BUFFER END");
+    Serial.println("");
+}
+
+int HandlePacket(const uint8_t* const offset)
+{
+    const packet_header_t* hdr = (const packet_header_t*)offset;
     uint16_t chksum = mkcrc16((const uint8_t * const)hdr + sizeof(hdr->chksum_header), sizeof(*hdr) - sizeof(hdr->chksum_header));
     Serial.print("Header: chksum_header="); Serial.print(hexstr(&hdr->chksum_header, sizeof(hdr->chksum_header))); Serial.print(", chksum_data="); Serial.print(hexstr(&hdr->chksum_data, sizeof(hdr->chksum_data)));
     Serial.print(", type="); Serial.print(hdr->type); Serial.print(", size="); Serial.print(hdr->size);
-    Serial.print(" (chksum="); Serial.print(hexstr(&chksum, sizeof(chksum))); Serial.print(", hex="); Serial.print(hexstr(readBuffer, sizeof(*hdr)));
+    Serial.print(" (chksum="); Serial.print(hexstr(&chksum, sizeof(chksum))); Serial.print(", hex="); Serial.print(hexstr(offset, sizeof(*hdr)));
     Serial.println(")");
 
     if(packet_verifyheader(hdr) == 0)
@@ -89,15 +114,17 @@ void HandleSerialInput()
         Serial.print("Content checksum failed: ");
         Serial.print(hdr->chksum_data); Serial.print(" / "); Serial.println(chksum);
         SetStatus(false);
-        return;
+        return -1;
     }
 
+    int incrementSize = sizeof(*hdr) + hdr->size;
     switch(hdr->type)
     {
         case CPT_MOTORRUN:
         {
-            const packet_motorrun_t* pkt = (const packet_motorrun_t*)readBuffer;
-            float left, right;
+            const packet_motorrun_t* pkt = (const packet_motorrun_t*)offset;
+            float left;
+            float right;
             memcpy(&left, &pkt->left, sizeof(pkt->left));
             memcpy(&right, &pkt->right, sizeof(pkt->right));
 
@@ -105,26 +132,61 @@ void HandleSerialInput()
 
             motor.setM1Speed(MOTORSPEED_MAX * left);
             motor.setM2Speed(MOTORSPEED_MAX * right);
+
+            incrementSize = sizeof(*pkt);
+            break;
+        }
+        case CPT_MOTORJSDATA:
+        {
+            const packet_motorjsdata_t* pkt = (const packet_motorjsdata_t*)offset;
+            float balance;
+            int8_t direction;
+            memcpy(&balance, &pkt->balance, sizeof(pkt->balance));
+            memcpy(&direction, &pkt->direction, sizeof(pkt->direction));
+
+            Serial.print("CPT_MOTORJSDATA: balance="); Serial.print(balance); Serial.print(", direction="); Serial.println(direction);
+
+            if(direction == 0)
+            {
+                //motor.setBrakes();
+                motor.setM1Speed(0);
+                motor.setM2Speed(0);
+                break;
+            }
+
+            float x = denormalize11(balance, 0, MOTORSPEED_MAX);
+            float m1speed = (MOTORSPEED_MAX - x) * direction;
+            float m2speed = x * direction;
+            Serial.print("Left motor speed: "); Serial.println(m1speed);
+            Serial.print("Right motor speed: "); Serial.println(m2speed);
+            motor.setM1Speed(m1speed);
+            motor.setM2Speed(m2speed);
+
+            incrementSize = sizeof(*pkt);
             break;
         }
         case CPT_MOTORSTOP:
         {
             Serial.println("CPT_MOTORSTOP");
-            motor.setBrakes();
+            //motor.setBrakes();
+            motor.setM1Speed(0);
+            motor.setM2Speed(0);
+
             break;
         }
         default:
         {
             Serial.print("Unknown packet type: "); Serial.println(hdr->type);
             break;
+            //return -1;
         }
     }
 
-    Serial.println("");
     SetStatus(true);
+    return incrementSize;
 }
 
-void loop()
+void loop(void)
 {
     HandleSerialInput();
 }
