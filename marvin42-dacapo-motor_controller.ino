@@ -1,12 +1,5 @@
 #include <stdarg.h>
-
-//#define DEBUG
-#ifndef DEBUG
 #include <ArduinoMotorShieldR3.h>
-#else // Define dummy class if in debug/development mode
-#include "ArduinoMotorShieldR3.h"
-#endif
-
 #include "src/crc.h"
 #include "src/packet.h"
 #include "src/custom_packets.h"
@@ -50,7 +43,6 @@ void HandleSerialInput(void)
     readSize = Serial.readBytes(readBuffer, sizeof(readBuffer));
     Serial.print("Raw: size="); Serial.print(readSize); Serial.print(", hex="); Serial.println(hexstr(readBuffer, readSize));
     const uint8_t* currentOffset = readBuffer;
-    int incrementSize;
 
     Serial.println("BUFFER BEGIN");
     const uint8_t* const readBufferEnd = &readBuffer[readSize];
@@ -64,8 +56,8 @@ void HandleSerialInput(void)
             return;
         }
 
-        incrementSize = HandlePacket(currentOffset);
-        if(incrementSize <= 0)
+        size_t incrementSize;
+        if(!HandlePacket(currentOffset, incrementSize))
         {
             Serial.println("Skipping current buffer data");
             Serial.println("");
@@ -80,7 +72,7 @@ void HandleSerialInput(void)
     Serial.println("");
 }
 
-int HandlePacket(const uint8_t* const offset)
+bool HandlePacket(const uint8_t* const offset, size_t& packetSize)
 {
     const packet_header_t* hdr = (const packet_header_t*)offset;
     uint16_t chksum = mkcrc16((const uint8_t * const)hdr + sizeof(hdr->chksum_header), sizeof(*hdr) - sizeof(hdr->chksum_header));
@@ -94,7 +86,7 @@ int HandlePacket(const uint8_t* const offset)
         Serial.print("Header checksum failed: ");
         Serial.print(hdr->chksum_header); Serial.print(", "); Serial.println(chksum);
         SetStatus(false);
-        return;
+        return false;
     }
 
     if(readSize < sizeof(*hdr) + hdr->size)
@@ -102,7 +94,7 @@ int HandlePacket(const uint8_t* const offset)
         Serial.print("Content size failed: ");
         Serial.print(readSize); Serial.print(" / "); Serial.println(sizeof(*hdr) + hdr->size);
         SetStatus(false);
-        return;
+        return false;
     }
 
     chksum = mkcrc16((const uint8_t * const)hdr + sizeof(*hdr), hdr->size);
@@ -114,10 +106,10 @@ int HandlePacket(const uint8_t* const offset)
         Serial.print("Content checksum failed: ");
         Serial.print(hdr->chksum_data); Serial.print(" / "); Serial.println(chksum);
         SetStatus(false);
-        return -1;
+        return false;
     }
 
-    int incrementSize = sizeof(*hdr) + hdr->size;
+    int size = sizeof(*hdr) + hdr->size;
     switch(hdr->type)
     {
         case CPT_MOTORRUN:
@@ -133,7 +125,7 @@ int HandlePacket(const uint8_t* const offset)
             motor.setM1Speed(MOTORSPEED_MAX * left);
             motor.setM2Speed(MOTORSPEED_MAX * right);
 
-            incrementSize = sizeof(*pkt);
+            size = sizeof(*pkt);
             break;
         }
         case CPT_MOTORJSDATA:
@@ -162,7 +154,7 @@ int HandlePacket(const uint8_t* const offset)
             motor.setM1Speed(m1speed);
             motor.setM2Speed(m2speed);
 
-            incrementSize = sizeof(*pkt);
+            size = sizeof(*pkt);
             break;
         }
         case CPT_MOTORSTOP:
@@ -182,8 +174,9 @@ int HandlePacket(const uint8_t* const offset)
         }
     }
 
+    packetSize = size;
     SetStatus(true);
-    return incrementSize;
+    return true;
 }
 
 void loop(void)
