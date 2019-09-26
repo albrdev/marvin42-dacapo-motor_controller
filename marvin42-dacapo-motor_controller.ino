@@ -1,10 +1,14 @@
 #include <stdarg.h>
+#include <SoftwareSerial.h>
 #include <ArduinoMotorShieldR3.h>
 #include "src/crc.h"
 #include "src/packet.h"
 #include "src/custom_packets.h"
+
+//#define AVR_DEBUG // Must define before including 'generic.hpp'
 #include "src/generic.hpp"
 
+SoftwareSerial serial(5, 6);
 ArduinoMotorShieldR3 motor;
 #define MOTORSPEED_MAX 400
 
@@ -22,7 +26,8 @@ void setup(void)
     delay(2500);
     Serial.print("Initializing...");
 
-    Serial.begin(115200);
+    Serial.begin(9600);
+    serial.begin(115200);
     motor.init();
 
     pinMode(D4, OUTPUT);
@@ -37,14 +42,14 @@ size_t readSize;
 
 void HandleSerialInput(void)
 {
-    if(!Serial.available())
+    if(!serial.available())
         return;
 
-    readSize = Serial.readBytes(readBuffer, sizeof(readBuffer));
-    Serial.print("Raw: size="); Serial.print(readSize); Serial.print(", hex="); Serial.println(hexstr(readBuffer, readSize));
+    readSize = serial.readBytes(readBuffer, sizeof(readBuffer));
+    PrintDebug("Raw: size="); PrintDebug(readSize); PrintDebug(", hex="); PrintDebugLine(hexstr(readBuffer, readSize));
     const uint8_t* currentOffset = readBuffer;
 
-    Serial.println("BUFFER BEGIN");
+    PrintDebugLine("BUFFER BEGIN");
     const uint8_t* const readBufferEnd = &readBuffer[readSize];
     while(currentOffset < readBufferEnd)
     {
@@ -52,8 +57,8 @@ void HandleSerialInput(void)
         {
             size_t a = (size_t)((currentOffset + sizeof(packet_header_t)) - readBuffer);
             size_t b = (size_t)(readBufferEnd - readBuffer);
-            Serial.print("Header size failed: ");
-            Serial.print(a); Serial.print(" / "); Serial.println(b);
+            PrintDebug("Header size failed: ");
+            PrintDebug(a); PrintDebug(" / "); PrintDebugLine(b);
             SetStatus(false);
             return;
         }
@@ -61,52 +66,52 @@ void HandleSerialInput(void)
         size_t incrementSize;
         if(!HandlePacket(currentOffset, incrementSize))
         {
-            Serial.println("Skipping current buffer data");
-            Serial.println("");
+            PrintDebugLine("Skipping current buffer data");
+            PrintDebugLine("");
             return;
         }
 
-        Serial.println("");
+        PrintDebugLine("");
         currentOffset += incrementSize;
     }
 
-    Serial.println("BUFFER END");
-    Serial.println("");
+    PrintDebugLine("BUFFER END");
+    PrintDebugLine("");
 }
 
 bool HandlePacket(const uint8_t* const offset, size_t& packetSize)
 {
     const packet_header_t* hdr = (const packet_header_t*)offset;
     uint16_t chksum = mkcrc16((const uint8_t * const)hdr + sizeof(hdr->chksum_header), sizeof(*hdr) - sizeof(hdr->chksum_header));
-    Serial.print("Header: chksum_header="); Serial.print(hexstr(&hdr->chksum_header, sizeof(hdr->chksum_header))); Serial.print(", chksum_data="); Serial.print(hexstr(&hdr->chksum_data, sizeof(hdr->chksum_data)));
-    Serial.print(", type="); Serial.print(hdr->type); Serial.print(", size="); Serial.print(hdr->size);
-    Serial.print(" (chksum="); Serial.print(hexstr(&chksum, sizeof(chksum))); Serial.print(", hex="); Serial.print(hexstr(offset, sizeof(*hdr)));
-    Serial.println(")");
+    PrintDebug("Header: chksum_header="); PrintDebug(hexstr(&hdr->chksum_header, sizeof(hdr->chksum_header))); PrintDebug(", chksum_data="); PrintDebug(hexstr(&hdr->chksum_data, sizeof(hdr->chksum_data)));
+    PrintDebug(", type="); PrintDebug(hdr->type); PrintDebug(", size="); PrintDebug(hdr->size);
+    PrintDebug(" (chksum="); PrintDebug(hexstr(&chksum, sizeof(chksum))); PrintDebug(", hex="); PrintDebug(hexstr(offset, sizeof(*hdr)));
+    PrintDebugLine(")");
 
     if(packet_verifyheader(hdr) == 0)
     {
-        Serial.print("Header checksum failed: ");
-        Serial.print(hexstr(&hdr->chksum_header, sizeof(hdr->chksum_header))); Serial.print(", "); Serial.println(hexstr(&chksum, sizeof(chksum)));
+        PrintDebug("Header checksum failed: ");
+        PrintDebug(hexstr(&hdr->chksum_header, sizeof(hdr->chksum_header))); PrintDebug(", "); PrintDebugLine(hexstr(&chksum, sizeof(chksum)));
         SetStatus(false);
         return false;
     }
 
     if(readSize < sizeof(*hdr) + hdr->size)
     {
-        Serial.print("Content size failed: ");
-        Serial.print(readSize); Serial.print(" / "); Serial.println(sizeof(*hdr) + hdr->size);
+        PrintDebug("Content size failed: ");
+        PrintDebug(readSize); PrintDebug(" / "); PrintDebugLine(sizeof(*hdr) + hdr->size);
         SetStatus(false);
         return false;
     }
 
     chksum = mkcrc16((const uint8_t * const)hdr + sizeof(*hdr), hdr->size);
-    Serial.print("Content: chksum_header="); Serial.print(hexstr(&hdr->chksum_data, sizeof(hdr->chksum_data))); Serial.print(", size="); Serial.print(hdr->size);
-    Serial.print(" (chksum="); Serial.print(hexstr(&chksum, sizeof(chksum))); Serial.print(", hex="); Serial.print(hexstr((const uint8_t * const)readBuffer + sizeof(*hdr), hdr->size));
-    Serial.println(")");
+    PrintDebug("Content: chksum_header="); PrintDebug(hexstr(&hdr->chksum_data, sizeof(hdr->chksum_data))); PrintDebug(", size="); PrintDebug(hdr->size);
+    PrintDebug(" (chksum="); PrintDebug(hexstr(&chksum, sizeof(chksum))); PrintDebug(", hex="); PrintDebug(hexstr((const uint8_t * const)readBuffer + sizeof(*hdr), hdr->size));
+    PrintDebugLine(")");
     if(packet_verifydata(hdr) == 0)
     {
-        Serial.print("Content checksum failed: ");
-        Serial.print(hdr->chksum_data); Serial.print(" / "); Serial.println(chksum);
+        PrintDebug("Content checksum failed: ");
+        PrintDebug(hdr->chksum_data); PrintDebug(" / "); PrintDebugLine(chksum);
         SetStatus(false);
         return false;
     }
@@ -122,7 +127,7 @@ bool HandlePacket(const uint8_t* const offset, size_t& packetSize)
             memcpy(&left, &pkt->left, sizeof(pkt->left));
             memcpy(&right, &pkt->right, sizeof(pkt->right));
 
-            Serial.print("CPT_MOTORRUN: left="); Serial.print(left); Serial.print(", right="); Serial.println(right);
+            PrintDebug("CPT_MOTORRUN: left="); PrintDebug(left); PrintDebug(", right="); PrintDebugLine(right);
 
             motor.setM1Speed(MOTORSPEED_MAX * left);
             motor.setM2Speed(MOTORSPEED_MAX * right);
@@ -138,7 +143,7 @@ bool HandlePacket(const uint8_t* const offset, size_t& packetSize)
             memcpy(&balance, &pkt->balance, sizeof(pkt->balance));
             memcpy(&direction, &pkt->direction, sizeof(pkt->direction));
 
-            Serial.print("CPT_MOTORJSDATA: balance="); Serial.print(balance); Serial.print(", direction="); Serial.println(direction);
+            PrintDebug("CPT_MOTORJSDATA: balance="); PrintDebug(balance); PrintDebug(", direction="); PrintDebugLine(direction);
 
             if(direction == 0)
             {
@@ -151,8 +156,8 @@ bool HandlePacket(const uint8_t* const offset, size_t& packetSize)
             float x = denormalize11(balance, 0, MOTORSPEED_MAX);
             float m1speed = (MOTORSPEED_MAX - x) * direction;
             float m2speed = x * direction;
-            Serial.print("Left motor speed: "); Serial.println(m1speed);
-            Serial.print("Right motor speed: "); Serial.println(m2speed);
+            PrintDebug("Left motor speed: "); PrintDebugLine(m1speed);
+            PrintDebug("Right motor speed: "); PrintDebugLine(m2speed);
             motor.setM1Speed(m1speed);
             motor.setM2Speed(m2speed);
 
@@ -161,7 +166,7 @@ bool HandlePacket(const uint8_t* const offset, size_t& packetSize)
         }
         case CPT_MOTORSTOP:
         {
-            Serial.println("CPT_MOTORSTOP");
+            PrintDebugLine("CPT_MOTORSTOP");
             //motor.setBrakes();
             motor.setM1Speed(0);
             motor.setM2Speed(0);
@@ -170,7 +175,7 @@ bool HandlePacket(const uint8_t* const offset, size_t& packetSize)
         }
         default:
         {
-            Serial.print("Unknown packet type: "); Serial.println(hdr->type);
+            PrintDebug("Unknown packet type: "); PrintDebugLine(hdr->type);
             break;
             //return -1;
         }
