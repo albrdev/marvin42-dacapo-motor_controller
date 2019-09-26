@@ -1,5 +1,5 @@
 #include <stdarg.h>
-#include <SoftwareSerial.h>
+//#include <SoftwareSerial.h>
 #include <ArduinoMotorShieldR3.h>
 #include "src/crc.h"
 #include "src/packet.h"
@@ -8,7 +8,7 @@
 //#define M42_DEBUG // Must define before including 'generic.hpp'
 #include "src/generic.hpp"
 
-SoftwareSerial serial(5, 6);
+//SoftwareSerial serial(5, 6);
 ArduinoMotorShieldR3 motor;
 #define MOTORSPEED_MAX 400
 
@@ -26,8 +26,8 @@ void setup(void)
     delay(2500);
     Serial.print("Initializing...");
 
-    Serial.begin(9600);
-    serial.begin(115200);
+    //Serial.begin(9600);
+    Serial.begin(115200);
     motor.init();
 
     pinMode(D4, OUTPUT);
@@ -42,10 +42,10 @@ size_t readSize;
 
 void HandleSerialInput(void)
 {
-    if(!serial.available())
+    if(!Serial.available())
         return;
 
-    readSize = serial.readBytes(readBuffer, sizeof(readBuffer));
+    readSize = Serial.readBytes(readBuffer, sizeof(readBuffer));
     PrintDebug("Raw: size="); PrintDebug(readSize); PrintDebug(", hex="); PrintDebugLine(hexstr(readBuffer, readSize));
     const uint8_t* currentOffset = readBuffer;
 
@@ -64,11 +64,16 @@ void HandleSerialInput(void)
         }
 
         size_t incrementSize;
-        if(!HandlePacket(currentOffset, incrementSize))
+        if(!HandlePacket(currentOffset, readBufferEnd, incrementSize))
         {
-            PrintDebugLine("Skipping current buffer data");
+            PrintDebugLine("BUFFER ERROR");
             PrintDebugLine("");
+            SetStatus(false);
             return;
+        }
+        else
+        {
+            SetStatus(true);
         }
 
         PrintDebugLine("");
@@ -79,7 +84,7 @@ void HandleSerialInput(void)
     PrintDebugLine("");
 }
 
-bool HandlePacket(const uint8_t* const offset, size_t& packetSize)
+bool HandlePacket(const uint8_t* const offset, const uint8_t* const end, size_t& packetSize)
 {
     const packet_header_t* hdr = (const packet_header_t*)offset;
     uint16_t chksum = mkcrc16((const uint8_t * const)hdr + sizeof(hdr->chksum_header), sizeof(*hdr) - sizeof(hdr->chksum_header));
@@ -92,27 +97,26 @@ bool HandlePacket(const uint8_t* const offset, size_t& packetSize)
     {
         PrintDebug("Header checksum failed: ");
         PrintDebug(hexstr(&hdr->chksum_header, sizeof(hdr->chksum_header))); PrintDebug(", "); PrintDebugLine(hexstr(&chksum, sizeof(chksum)));
-        SetStatus(false);
         return false;
     }
 
-    if(readSize < sizeof(*hdr) + hdr->size)
+    if(offset + hdr->size > end)
     {
+        size_t a = (size_t)((offset + hdr->size) - readBuffer);
+        size_t b = (size_t)(end - readBuffer);
         PrintDebug("Content size failed: ");
-        PrintDebug(readSize); PrintDebug(" / "); PrintDebugLine(sizeof(*hdr) + hdr->size);
-        SetStatus(false);
+        PrintDebug(a); PrintDebug(" / "); PrintDebugLine(b);
         return false;
     }
 
     chksum = mkcrc16((const uint8_t * const)hdr + sizeof(*hdr), hdr->size);
-    PrintDebug("Content: chksum_header="); PrintDebug(hexstr(&hdr->chksum_data, sizeof(hdr->chksum_data))); PrintDebug(", size="); PrintDebug(hdr->size);
-    PrintDebug(" (chksum="); PrintDebug(hexstr(&chksum, sizeof(chksum))); PrintDebug(", hex="); PrintDebug(hexstr((const uint8_t * const)readBuffer + sizeof(*hdr), hdr->size));
+    PrintDebug("Content: chksum_data="); PrintDebug(hexstr(&hdr->chksum_data, sizeof(hdr->chksum_data))); PrintDebug(", size="); PrintDebug(hdr->size);
+    PrintDebug(" (chksum="); PrintDebug(hexstr(&chksum, sizeof(chksum))); PrintDebug(", hex="); PrintDebug(hexstr((const uint8_t * const)offset + sizeof(*hdr), hdr->size));
     PrintDebugLine(")");
     if(packet_verifydata(hdr) == 0)
     {
         PrintDebug("Content checksum failed: ");
         PrintDebug(hdr->chksum_data); PrintDebug(" / "); PrintDebugLine(chksum);
-        SetStatus(false);
         return false;
     }
 
@@ -182,7 +186,6 @@ bool HandlePacket(const uint8_t* const offset, size_t& packetSize)
     }
 
     packetSize = size;
-    SetStatus(true);
     return true;
 }
 
