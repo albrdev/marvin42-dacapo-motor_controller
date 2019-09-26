@@ -5,7 +5,7 @@
 #include "src/packet.h"
 #include "src/custom_packets.h"
 
-//#define AVR_DEBUG // Must define before including 'generic.hpp'
+//#define M42_DEBUG // Must define before including 'generic.hpp'
 #include "src/generic.hpp"
 
 SoftwareSerial serial(5, 6);
