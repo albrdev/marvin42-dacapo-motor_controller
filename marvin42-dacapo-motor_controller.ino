@@ -48,10 +48,12 @@ void HandleSerialInput(void)
     const uint8_t* const readBufferEnd = &readBuffer[readSize];
     while(currentOffset < readBufferEnd)
     {
-        if(currentOffset + sizeof(packet_header_t) >= readBufferEnd)
+        if(currentOffset + sizeof(packet_header_t) > readBufferEnd)
         {
+            size_t a = (size_t)((currentOffset + sizeof(packet_header_t)) - readBuffer);
+            size_t b = (size_t)(readBufferEnd - readBuffer);
             Serial.print("Header size failed: ");
-            Serial.print(readSize); Serial.print(" / "); Serial.println(sizeof(packet_header_t));
+            Serial.print(a); Serial.print(" / "); Serial.println(b);
             SetStatus(false);
             return;
         }
@@ -84,7 +86,7 @@ bool HandlePacket(const uint8_t* const offset, size_t& packetSize)
     if(packet_verifyheader(hdr) == 0)
     {
         Serial.print("Header checksum failed: ");
-        Serial.print(hdr->chksum_header); Serial.print(", "); Serial.println(chksum);
+        Serial.print(hexstr(&hdr->chksum_header, sizeof(hdr->chksum_header))); Serial.print(", "); Serial.println(hexstr(&chksum, sizeof(chksum)));
         SetStatus(false);
         return false;
     }
