@@ -1,14 +1,12 @@
 #include <stdarg.h>
-//#include <SoftwareSerial.h>
 #include <ArduinoMotorShieldR3.h>
-#include "src/crc.h"
-#include "src/packet.h"
-#include "src/custom_packets.h"
+#include "crc.h"
+#include "packet.h"
+#include "custom_packets.h"
 
 //#define M42_DEBUG // Must define before including 'generic.hpp'
-#include "src/generic.hpp"
+#include "generic.hpp"
 
-//SoftwareSerial serial(5, 6);
 ArduinoMotorShieldR3 motor;
 #define MOTORSPEED_MAX 400
 
@@ -24,10 +22,9 @@ void SetStatus(const bool status)
 void setup(void)
 {
     delay(2500);
+    Serial.begin(9600);
     Serial.print("Initializing...");
 
-    //Serial.begin(9600);
-    Serial.begin(115200);
     motor.init();
 
     pinMode(D4, OUTPUT);
