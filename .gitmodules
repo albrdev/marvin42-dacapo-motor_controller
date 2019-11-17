@@ -1,3 +1,8 @@
 [submodule "ext/marvin42-dacapo-shared_libraries"]
 	path = ext/marvin42-dacapo-shared_libraries
 	url = git@github.com:albrdev/marvin42-dacapo-shared_libraries.git
+	url = https://github.com/albrdev/marvin42-dacapo-shared_libraries.git
+[submodule "lib/arduino-motor-shield-r3"]
+	path = lib/arduino-motor-shield-r3
+	url = git@github.com:snowlab/arduino-motor-shield-r3.git
+	url = https://github.com/snowlab/arduino-motor-shield-r3.git
