@@ -3,8 +3,6 @@
 #include "crc.h"
 #include "packet.h"
 #include "custom_packets.h"
-
-//#define M42_DEBUG // Must define before including 'generic.hpp'
 #include "generic.hpp"
 
 ArduinoMotorShieldR3 motor;
