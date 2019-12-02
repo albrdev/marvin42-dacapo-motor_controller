@@ -1,12 +1,11 @@
 #include <stdarg.h>
-#include <ArduinoMotorShieldR3.h>
+#include "DCMotorAssembly.hpp"
 #include "crc.h"
 #include "packet.h"
 #include "custom_packets.h"
 #include "generic.hpp"
 
-ArduinoMotorShieldR3 motor;
-#define MOTORSPEED_MAX 400
+DCMotorAssembly motors;
 
 #define D4 4
 #define D7 7
@@ -23,7 +22,7 @@ void setup(void)
     Serial.begin(9600);
     Serial.print("Initializing...");
 
-    motor.init();
+    motors.Begin();
 
     pinMode(D4, OUTPUT);
     pinMode(D7, OUTPUT);
@@ -128,8 +127,8 @@ bool HandlePacket(const uint8_t* const offset, const uint8_t* const end, size_t&
 
             PrintDebug("CPT_MOTORRUN: left="); PrintDebug(left); PrintDebug(", right="); PrintDebugLine(right);
 
-            motor.setM1Speed(MOTORSPEED_MAX * left);
-            motor.setM2Speed(MOTORSPEED_MAX * right);
+            motors.SetLeftSpeed(left);
+            motors.SetRightSpeed(right);
 
             size = sizeof(*pkt);
             break;
@@ -146,19 +145,17 @@ bool HandlePacket(const uint8_t* const offset, const uint8_t* const end, size_t&
 
             if(direction == 0)
             {
-                //motor.setBrakes();
-                motor.setM1Speed(0);
-                motor.setM2Speed(0);
+                motors.Halt();
                 break;
             }
 
-            float x = denormalize11(balance, 0, MOTORSPEED_MAX);
-            float m1speed = (MOTORSPEED_MAX - x) * direction;
+            float x = denormalize11(balance, 0.0f, 1.0f);
+            float m1speed = (1.0f - x) * direction;
             float m2speed = x * direction;
             PrintDebug("Left motor speed: "); PrintDebugLine(m1speed);
             PrintDebug("Right motor speed: "); PrintDebugLine(m2speed);
-            motor.setM1Speed(m1speed);
-            motor.setM2Speed(m2speed);
+            motors.SetLeftSpeed(m1speed);
+            motors.SetRightSpeed(m2speed);
 
             size = sizeof(*pkt);
             break;
@@ -166,9 +163,7 @@ bool HandlePacket(const uint8_t* const offset, const uint8_t* const end, size_t&
         case CPT_MOTORSTOP:
         {
             PrintDebugLine("CPT_MOTORSTOP");
-            //motor.setBrakes();
-            motor.setM1Speed(0);
-            motor.setM2Speed(0);
+            motors.Halt();
 
             break;
         }
