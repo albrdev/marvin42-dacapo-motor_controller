@@ -16,29 +16,7 @@ private:
 
     const static size_t k_VectorLength = 3U;
     const static size_t k_DirectionCount = k_VectorLength * k_VectorLength;
-    constexpr static float k_DirectionMap[k_VectorLength][k_VectorLength][k_DeviceCount] =
-    {
-        // Down row
-        {
-            { -1, 0, 0, -1 },   // Down-Left
-            { -1, -1, -1, -1 }, // Down-Middle
-            { 0, -1, -1, 0 }    // Down-Right
-        },
-
-        // Middle row
-        {
-            { -1, 1, 1, -1 },   // Middle-Left
-            { 0, 0, 0, 0 },     // Center (Stopped)
-            { 1, -1, -1, 1 }    // Middle-Right
-        },
-
-        // Up row
-        {
-            { 0, 1, 1, 0 },     // Up-Left
-            { 1, 1, 1, 1 },     // Up-Middle
-            { 1, 0, 0, 1 }      // Up-Right
-        }
-    };
+    static const float k_DirectionMap[k_VectorLength][k_VectorLength][k_DeviceCount];
 
 public:
     void Run(const float directionX, const float directionY, float power = 1.0f);

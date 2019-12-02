@@ -1,5 +1,29 @@
 #include "DCMotorAssembly.hpp"
 
+const float DCMotorAssembly::k_DirectionMap[k_VectorLength][k_VectorLength][k_DeviceCount] =
+{
+    // Down row
+    {
+        { -1, 0, 0, -1 },   // Down-Left
+        { -1, -1, -1, -1 }, // Down-Middle
+        { 0, -1, -1, 0 }    // Down-Right
+    },
+
+    // Middle row
+    {
+        { -1, 1, 1, -1 },   // Middle-Left
+        { 0, 0, 0, 0 },     // Center (Stopped)
+        { 1, -1, -1, 1 }    // Middle-Right
+    },
+
+    // Up row
+    {
+        { 0, 1, 1, 0 },     // Up-Left
+        { 1, 1, 1, 1 },     // Up-Middle
+        { 1, 0, 0, 1 }      // Up-Right
+    }
+};
+
 Adafruit_MotorShield DCMotorAssembly::s_Shield;
 bool DCMotorAssembly::s_ShieldInitialized = false;
 
