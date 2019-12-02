@@ -3,14 +3,15 @@
 Adafruit_MotorShield DCMotorAssembly::s_Shield;
 bool DCMotorAssembly::s_ShieldInitialized = false;
 
-void DCMotorAssembly::Run(const float directionX, const float directionY, const float power)
+void DCMotorAssembly::Run(const float directionX, const float directionY, float power)
 {
     size_t x = (size_t)denormalize11(clamp11(directionX), 0, DCMotorAssembly::k_VectorLength - 1U);
     size_t y = (size_t)denormalize11(clamp11(directionY), 0, DCMotorAssembly::k_VectorLength - 1U);
 
+    power = clamp01(power);
     for(size_t i = 0U; i < DCMotorAssembly::k_DeviceCount; i++)
     {
-        SetSpeed(i, DCMotorAssembly::k_DirectionMap[x][y][i] * clamp01(power));
+        SetSpeed(i, DCMotorAssembly::k_DirectionMap[x][y][i] * power);
     }
 }
 

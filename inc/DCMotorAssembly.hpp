@@ -41,7 +41,7 @@ private:
     };
 
 public:
-    void Run(const float directionX, const float directionY, const float power = 1.0f);
+    void Run(const float directionX, const float directionY, float power = 1.0f);
 
     void SetSpeed(const float value);
     void SetSpeed(const size_t port, const float value);
