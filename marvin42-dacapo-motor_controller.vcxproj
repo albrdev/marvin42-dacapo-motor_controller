@@ -68,7 +68,7 @@
     <NMakeCleanCommandLine>platformio -f -c visualstudio run --target clean</NMakeCleanCommandLine>
     <NMakePreprocessorDefinitions>PLATFORMIO=40003;ARDUINO_AVR_UNO;F_CPU=16000000L;ARDUINO_ARCH_AVR;ARDUINO=10805;__AVR_ATmega328P__;WIN32;_DEBUG;$(NMakePreprocessorDefinitions)</NMakePreprocessorDefinitions>
     <NMakeIncludeSearchPath>$(HOMEDRIVE)$(HOMEPATH)/.platformio/packages/framework-arduinoavr/cores/arduino;$(HOMEDRIVE)$(HOMEPATH)/.platformio/packages/framework-arduinoavr/variants/standard;$(HOMEDRIVE)$(HOMEPATH)/.platformio/packages/framework-arduinoavr/libraries/__cores__/arduino/EEPROM/src;$(HOMEDRIVE)$(HOMEPATH)/.platformio/packages/framework-arduinoavr/libraries/__cores__/arduino/HID/src;$(HOMEDRIVE)$(HOMEPATH)/.platformio/packages/framework-arduinoavr/libraries/__cores__/arduino/SPI/src;$(HOMEDRIVE)$(HOMEPATH)/.platformio/packages/framework-arduinoavr/libraries/__cores__/arduino/SoftwareSerial/src;$(HOMEDRIVE)$(HOMEPATH)/.platformio/packages/framework-arduinoavr/libraries/__cores__/arduino/Wire/src;$(HOMEDRIVE)$(HOMEPATH)/.platformio/packages/toolchain-atmelavr/avr/include;$(HOMEDRIVE)$(HOMEPATH)/.platformio/packages/toolchain-atmelavr/lib/gcc/avr/5.4.0/include;$(HOMEDRIVE)$(HOMEPATH)/.platformio/packages/toolchain-atmelavr/lib/gcc/avr/5.4.0/include-fixed;$(HOMEDRIVE)$(HOMEPATH)/.platformio/packages/tool-unity;$(NMakeIncludeSearchPath)</NMakeIncludeSearchPath>
-    <IncludePath>$(ProjectDir)\ext\marvin42-dacapo-shared_libraries\inc;$(ProjectDir)\lib\arduino-motor-shield-r3;$(IncludePath)</IncludePath>
+    <IncludePath>$(ProjectDir)\inc;$(ProjectDir)\ext\marvin42-dacapo-shared_libraries\inc;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <NMakeBuildCommandLine>platformio -f -c visualstudio run</NMakeBuildCommandLine>
@@ -101,6 +101,12 @@
   </ItemGroup>
   <ItemGroup>
     <Text Include="LICENSE.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="src\DCMotorAssembly.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="inc\DCMotorAssembly.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
