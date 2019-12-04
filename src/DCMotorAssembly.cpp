@@ -1,41 +1,49 @@
 #include "DCMotorAssembly.hpp"
+#include "generic.hpp"
 
 const float DCMotorAssembly::k_DirectionMap[k_VectorLength][k_VectorLength][k_DeviceCount] =
 {
     // Down row
     {
-        { -1, 0, 0, -1 },   // Down-Left
-        { -1, -1, -1, -1 }, // Down-Middle
-        { 0, -1, -1, 0 }    // Down-Right
+        { -1, 0, 0, -1 },   // 0, Down-Left
+        { -1, -1, -1, -1 }, // 1, Down-Middle
+        { 0, -1, -1, 0 }    // 2, Down-Right
     },
 
     // Middle row
     {
-        { -1, 1, 1, -1 },   // Middle-Left
-        { 0, 0, 0, 0 },     // Center (Stopped)
-        { 1, -1, -1, 1 }    // Middle-Right
+        { -1, 1, 1, -1 },   // 3, Middle-Left
+        { 0, 0, 0, 0 },     // 4, Center (Stopped)
+        { 1, -1, -1, 1 }    // 5, Middle-Right
     },
 
     // Up row
     {
-        { 0, 1, 1, 0 },     // Up-Left
-        { 1, 1, 1, 1 },     // Up-Middle
-        { 1, 0, 0, 1 }      // Up-Right
+        { 0, 1, 1, 0 },     // 6, Up-Left
+        { 1, 1, 1, 1 },     // 7, Up-Middle
+        { 1, 0, 0, 1 }      // 8, Up-Right
     }
 };
 
-Adafruit_MotorShield DCMotorAssembly::s_Shield;
+Adafruit_MotorShield DCMotorAssembly::s_Shield(0x61);
 bool DCMotorAssembly::s_ShieldInitialized = false;
 
 void DCMotorAssembly::Run(const float directionX, const float directionY, float power)
 {
-    size_t x = (size_t)denormalize11(clamp11(directionX), 0, DCMotorAssembly::k_VectorLength - 1U);
-    size_t y = (size_t)denormalize11(clamp11(directionY), 0, DCMotorAssembly::k_VectorLength - 1U);
+    const float max = DCMotorAssembly::k_VectorLength - 1U;
+    size_t x = (size_t)denormalize11(round(clamp11(directionX)), 0.0f, max);
+    size_t y = (size_t)denormalize11(round(clamp11(directionY)), 0.0f, max);
+
+    PrintDebug("RUN: "); PrintDebug("x: "); PrintDebug(x); PrintDebug(", "); PrintDebug("y: "); PrintDebugLine(y);
+
+    PrintDebug(k_DirectionMap[y][x][0]); PrintDebug(", "); PrintDebugLine(k_DirectionMap[y][x][1]);
+    PrintDebug(k_DirectionMap[y][x][2]); PrintDebug(", "); PrintDebugLine(k_DirectionMap[y][x][3]);
+    PrintDebugLine("");
 
     power = clamp01(power);
     for(size_t i = 0U; i < DCMotorAssembly::k_DeviceCount; i++)
     {
-        SetSpeed(i, DCMotorAssembly::k_DirectionMap[x][y][i] * power);
+        SetSpeed(i, DCMotorAssembly::k_DirectionMap[y][x][i] * power);
     }
 }
 
@@ -64,7 +72,6 @@ void DCMotorAssembly::SetSpeed(const size_t port, const float value)
 
     m_Devices[port]->setSpeed(denormalize01(fabsf(value), 0, 255));
     m_Devices[port]->run(sgn(value) > 0 ? FORWARD : BACKWARD);
-    m_Devices[port]->run(RELEASE);
 }
 
 void DCMotorAssembly::SetLeftSpeed(const float value)

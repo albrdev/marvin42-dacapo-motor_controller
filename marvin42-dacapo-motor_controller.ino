@@ -11,11 +11,19 @@ DCMotorAssembly motors;
 #define D4 4
 #define D7 7
 
+#define CommandSerial Serial2
+
 void SetStatus(const bool status)
 {
     digitalWrite(D4, status ? HIGH : LOW);
     digitalWrite(D7, !status ? HIGH : LOW);
 }
+
+struct
+{
+    vector2data_t direction;
+    float power;
+} inputdata = { { 0.0f, 0.0f }, 0.0f };
 
 uint8_t readBuffer[512];
 size_t readOffset = 0U;
@@ -25,39 +33,57 @@ void OnPacketReceived(const packet_header_t* const hdr)
 {
     switch(hdr->type)
     {
-        case CPT_MOTORRUN:
+        case CPT_MOTORBALANCE:
         {
-            const packet_motorrun_t* pkt = (const packet_motorrun_t*)hdr;
+            const packet_motorbalance_t* pkt = (const packet_motorbalance_t*)hdr;
             float left;
             float right;
             memcpy(&left, &pkt->left, sizeof(pkt->left));
             memcpy(&right, &pkt->right, sizeof(pkt->right));
 
-            PrintDebug("CPT_MOTORRUN: left="); PrintDebug(left); PrintDebug(", right="); PrintDebugLine(right);
+            PrintDebug("CPT_MOTORBALANCE: left="); PrintDebug(left); PrintDebug(", right="); PrintDebugLine(right);
 
             motors.SetLeftSpeed(left);
             motors.SetRightSpeed(right);
 
             break;
         }
-        case CPT_MOTORRUN2:
+        case CPT_DIRECTION:
         {
-            const packet_motorrun2_t* pkt = (const packet_motorrun2_t*)hdr;
-            float direction[2];
-            float power;
-            memcpy(&direction[0], &pkt->direction.x, sizeof(pkt->direction.x));
-            memcpy(&direction[1], &pkt->direction.y, sizeof(pkt->direction.y));
-            memcpy(&power, &pkt->power, sizeof(pkt->power));
+            const packet_direction_t* pkt = (const packet_direction_t*)hdr;
+            memcpy(&inputdata.direction, &pkt->direction, sizeof(pkt->direction));
 
-            PrintDebug("CPT_MOTORRUN2: direction="); PrintDebug("(x="); PrintDebug(direction[0]); PrintDebug(", y="); PrintDebug(direction[1]); PrintDebug(")");
-            PrintDebug(", power="); PrintDebugLine(power);
+            PrintDebug("CPT_DIRECTION: direction="); PrintDebug("(x="); PrintDebug(inputdata.direction.x); PrintDebug(", y="); PrintDebug(inputdata.direction.y); PrintDebug(")");
+            motors.Run(inputdata.direction.x, inputdata.direction.y, inputdata.power);
 
-            motors.Run(direction[0], direction[1], power);
+            break;
+        }
+        case CPT_MOTORPOWER:
+        {
+            const packet_motorpower_t* pkt = (const packet_motorpower_t*)hdr;
+            memcpy(&inputdata.power, &pkt->power, sizeof(pkt->power));
+
+            PrintDebug("CPT_MOTORPOWER: power="); PrintDebugLine(inputdata.power);
+            motors.Run(inputdata.direction.x, inputdata.direction.y, inputdata.power);
+
+            break;
+        }
+        case CPT_MOTORRUN:
+        {
+            const packet_motorrun_t* pkt = (const packet_motorrun_t*)hdr;
+            memcpy(&inputdata.direction, &pkt->direction, sizeof(pkt->direction));
+            memcpy(&inputdata.power, &pkt->power, sizeof(pkt->power));
+
+            PrintDebug("CPT_MOTORRUN: direction="); PrintDebug("(x="); PrintDebug(inputdata.direction.x); PrintDebug(", y="); PrintDebug(inputdata.direction.y); PrintDebug(")");
+            PrintDebug(", power="); PrintDebugLine(inputdata.power);
+
+            motors.Run(inputdata.direction.x, inputdata.direction.y, inputdata.power);
 
             break;
         }
         case CPT_MOTORSTOP:
         {
+            inputdata = { { 0.0f, 0.0f }, 0.0f };
             PrintDebugLine("CPT_MOTORSTOP");
             motors.Halt();
 
@@ -118,7 +144,7 @@ bool handle_packet(const uint8_t* const offset, const uint8_t* const end, size_t
 
 void handle_data(void)
 {
-    if(Serial.available() <= 0)
+    if(CommandSerial.available() <= 0)
         return;
 
     if(readOffset >= sizeof(readBuffer))
@@ -128,7 +154,7 @@ void handle_data(void)
         readOffset = 0U; // Ignore this rubbish packet
     }
 
-    size_t readSize = Serial.readBytes(readBuffer + readOffset, sizeof(readBuffer) - readOffset);
+    size_t readSize = CommandSerial.readBytes(readBuffer + readOffset, sizeof(readBuffer) - readOffset);
     readSize += readOffset;
     readOffset = 0U;
 
@@ -179,6 +205,8 @@ void setup(void)
     delay(2500);
     Serial.begin(9600, SERIAL_8N1);
     Serial.print("Initializing...");
+
+    CommandSerial.begin(9600, SERIAL_8N1);
 
     motors.Begin();
 
