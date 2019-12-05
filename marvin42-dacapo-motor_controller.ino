@@ -44,7 +44,8 @@ void OnPacketReceived(const packet_header_t* const hdr)
             memcpy(&left, &pkt->left, sizeof(pkt->left));
             memcpy(&right, &pkt->right, sizeof(pkt->right));
 
-            PrintDebug("CPT_MOTORBALANCE: left="); PrintDebug(left); PrintDebug(", right="); PrintDebugLine(right);
+            PrintDebug("CPT_MOTORBALANCE: left="); PrintDebug(left); PrintDebug(", right="); PrintDebug(right);
+            PrintDebugLine("");
 
             motors.SetLeftSpeed(left);
             motors.SetRightSpeed(right);
@@ -57,6 +58,8 @@ void OnPacketReceived(const packet_header_t* const hdr)
             memcpy(&inputdata.direction, &pkt->direction, sizeof(pkt->direction));
 
             PrintDebug("CPT_DIRECTION: direction="); PrintDebug("(x="); PrintDebug(inputdata.direction.x); PrintDebug(", y="); PrintDebug(inputdata.direction.y); PrintDebug(")");
+            PrintDebugLine("");
+
             motors.Run(inputdata.direction.x, inputdata.direction.y, inputdata.power);
 
             break;
@@ -67,6 +70,7 @@ void OnPacketReceived(const packet_header_t* const hdr)
             memcpy(&inputdata.power, &pkt->power, sizeof(pkt->power));
 
             PrintDebug("CPT_MOTORPOWER: power="); PrintDebugLine(inputdata.power);
+
             motors.Run(inputdata.direction.x, inputdata.direction.y, inputdata.power);
 
             break;
@@ -78,7 +82,8 @@ void OnPacketReceived(const packet_header_t* const hdr)
             memcpy(&inputdata.power, &pkt->power, sizeof(pkt->power));
 
             PrintDebug("CPT_MOTORRUN: direction="); PrintDebug("(x="); PrintDebug(inputdata.direction.x); PrintDebug(", y="); PrintDebug(inputdata.direction.y); PrintDebug(")");
-            PrintDebug(", power="); PrintDebugLine(inputdata.power);
+            PrintDebug(", power="); PrintDebug(inputdata.power);
+            PrintDebugLine("");
 
             motors.Run(inputdata.direction.x, inputdata.direction.y, inputdata.power);
 
@@ -87,14 +92,18 @@ void OnPacketReceived(const packet_header_t* const hdr)
         case CPT_MOTORSTOP:
         {
             inputdata = { { 0.0f, 0.0f }, 0.0f };
-            PrintDebugLine("CPT_MOTORSTOP");
+            PrintDebug("CPT_MOTORSTOP");
+            PrintDebugLine("");
+
             motors.Halt();
 
             break;
         }
         default:
         {
-            PrintDebug("Unknown packet type: "); PrintDebugLine(hdr->type);
+            PrintDebug("Unknown packet type: "); PrintDebug(hdr->type);
+            PrintDebugLine("");
+
             break;
         }
     }
