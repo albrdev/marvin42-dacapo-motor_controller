@@ -1,4 +1,6 @@
 #include "DCMotorAssembly.hpp"
+#include <math.h>
+#include "maths.h"
 
 const float DCMotorAssembly::k_DirectionMap[k_VectorLength][k_VectorLength][k_DeviceCount] =
 {
@@ -29,9 +31,9 @@ bool DCMotorAssembly::s_ShieldInitialized = false;
 
 void DCMotorAssembly::Run(const float directionX, const float directionY, float power)
 {
-    const float max = DCMotorAssembly::k_VectorLength - 1U;
-    size_t x = (size_t)denormalize11(round(clamp11(directionX)), 0.0f, max);
-    size_t y = (size_t)denormalize11(round(clamp11(directionY)), 0.0f, max);
+    const float maxIndex = DCMotorAssembly::k_VectorLength - 1U;
+    size_t x = (size_t)denormalize11((float)roundf(clamp11(directionX)), 0.0f, maxIndex);
+    size_t y = (size_t)denormalize11((float)roundf(clamp11(directionY)), 0.0f, maxIndex);
 
     power = clamp01(power);
     for(size_t i = 0U; i < DCMotorAssembly::k_DeviceCount; i++)

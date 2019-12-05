@@ -3,7 +3,6 @@
 
 #include <stdint.h>
 #include <Adafruit_MotorShield.h>
-#include "maths.h"
 
 class DCMotorAssembly
 {
