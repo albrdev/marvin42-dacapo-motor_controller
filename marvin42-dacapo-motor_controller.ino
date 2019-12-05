@@ -29,6 +29,9 @@ uint8_t readBuffer[512];
 size_t readOffset = 0U;
 #define INVALID_SIZE SIZE_MAX
 
+size_t packetSuccessCount = 0U;
+size_t packetFailCount = 0U;
+
 void OnPacketReceived(const packet_header_t* const hdr)
 {
     switch(hdr->type)
@@ -149,9 +152,11 @@ void handle_data(void)
 
     if(readOffset >= sizeof(readBuffer))
     {
-        // Should/could only happen if packet received claims it has an abnormally large data size, i.e. buffer overflow attack or possibly a very uncautious programmer either sending too large data or has reduced the receive buffer size lower than the packet that is currently receiving
+        // Should/could only happen if packet received claims it has an abnormally large data size. This could happen if:
+        //   * Intentional buffer overflow attack / client uncautiously sending too large data
+        //   * The buffer on the server side is smaller than the packet that is currently receiving
         PrintDebug("Buffer overflow: offset="); PrintDebug(readOffset); PrintDebug(", max="); PrintDebug(sizeof(readBuffer));
-        readOffset = 0U; // Ignore this rubbish packet
+        readOffset = 0U; // Ignore this rubbish
     }
 
     size_t readSize = CommandSerial.readBytes(readBuffer + readOffset, sizeof(readBuffer) - readOffset);
@@ -179,13 +184,13 @@ void handle_data(void)
     {
         PrintDebugLine("BUFFER ERROR");
         PrintDebugLine("");
-        //PacketFailCount++;
+        packetFailCount++;
         SetStatus(false);
         return;
     }
     else
     {
-        //PacketSuccessCount++;
+        packetSuccessCount++;
         SetStatus(true);
     }
 
