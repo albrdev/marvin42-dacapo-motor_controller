@@ -1,5 +1,4 @@
 #include "DCMotorAssembly.hpp"
-#include "generic.hpp"
 
 const float DCMotorAssembly::k_DirectionMap[k_VectorLength][k_VectorLength][k_DeviceCount] =
 {
@@ -33,12 +32,6 @@ void DCMotorAssembly::Run(const float directionX, const float directionY, float 
     const float max = DCMotorAssembly::k_VectorLength - 1U;
     size_t x = (size_t)denormalize11(round(clamp11(directionX)), 0.0f, max);
     size_t y = (size_t)denormalize11(round(clamp11(directionY)), 0.0f, max);
-
-    PrintDebug("RUN: "); PrintDebug("x: "); PrintDebug(x); PrintDebug(", "); PrintDebug("y: "); PrintDebugLine(y);
-
-    PrintDebug(k_DirectionMap[y][x][0]); PrintDebug(", "); PrintDebugLine(k_DirectionMap[y][x][1]);
-    PrintDebug(k_DirectionMap[y][x][2]); PrintDebug(", "); PrintDebugLine(k_DirectionMap[y][x][3]);
-    PrintDebugLine("");
 
     power = clamp01(power);
     for(size_t i = 0U; i < DCMotorAssembly::k_DeviceCount; i++)
