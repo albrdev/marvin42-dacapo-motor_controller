@@ -103,9 +103,11 @@
     <Text Include="LICENSE.txt" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="src\Button.cpp" />
     <ClCompile Include="src\DCMotorAssembly.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="inc\Button.hpp" />
     <ClInclude Include="inc\DCMotorAssembly.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

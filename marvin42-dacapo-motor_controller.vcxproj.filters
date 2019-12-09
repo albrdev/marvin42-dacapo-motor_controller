@@ -30,9 +30,15 @@
     <ClCompile Include="src\DCMotorAssembly.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\Button.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="inc\DCMotorAssembly.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="inc\Button.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
