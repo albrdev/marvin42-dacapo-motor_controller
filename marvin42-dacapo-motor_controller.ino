@@ -1,12 +1,14 @@
 #include <stdint.h>
 #include <stdarg.h>
 #include "DCMotorAssembly.hpp"
+#include "Button.hpp"
 #include "crc.h"
 #include "packet.h"
 #include "custom_packets.h"
 #include "generic.hpp"
 
 DCMotorAssembly motors;
+Button debugButton(13);
 
 #define D4 4
 #define D7 7
@@ -32,6 +34,26 @@ size_t readOffset = 0U;
 size_t packetSuccessCount = 0U;
 size_t packetFailCount = 0U;
 
+bool debug = false;
+#define PrintDebugBla(msg) if(debug) { PrintDebug(msg); }
+#define PrintDebugBlaLine(msg) if(debug) { PrintDebugLine(msg); }
+
+void toggleDebug(const bool state)
+{
+    if(!state)
+        return;
+
+    if(debug)
+        PrintDebugBlaLine("DEBUG: OFF");
+
+    debug = !debug;
+
+    if(debug)
+        PrintDebugBlaLine("DEBUG: ON");
+
+    delay(350);
+}
+
 void OnPacketReceived(const packet_header_t* const hdr)
 {
     switch(hdr->type)
@@ -44,8 +66,8 @@ void OnPacketReceived(const packet_header_t* const hdr)
             memcpy(&left, &pkt->left, sizeof(pkt->left));
             memcpy(&right, &pkt->right, sizeof(pkt->right));
 
-            PrintDebug("CPT_MOTORBALANCE: left="); PrintDebug(left); PrintDebug(", right="); PrintDebug(right);
-            PrintDebugLine("");
+            PrintDebugBla("CPT_MOTORBALANCE: left="); PrintDebugBla(left); PrintDebugBla(", right="); PrintDebugBla(right);
+            PrintDebugBlaLine("");
 
             motors.SetLeftSpeed(left);
             motors.SetRightSpeed(right);
@@ -57,8 +79,8 @@ void OnPacketReceived(const packet_header_t* const hdr)
             const packet_direction_t* pkt = (const packet_direction_t*)hdr;
             memcpy(&inputdata.direction, &pkt->direction, sizeof(pkt->direction));
 
-            PrintDebug("CPT_DIRECTION: direction="); PrintDebug("(x="); PrintDebug(inputdata.direction.x); PrintDebug(", y="); PrintDebug(inputdata.direction.y); PrintDebug(")");
-            PrintDebugLine("");
+            PrintDebugBla("CPT_DIRECTION: direction="); PrintDebugBla("(x="); PrintDebugBla(inputdata.direction.x); PrintDebugBla(", y="); PrintDebugBla(inputdata.direction.y); PrintDebugBla(")");
+            PrintDebugBlaLine("");
 
             motors.Run(inputdata.direction.x, inputdata.direction.y, inputdata.power);
 
@@ -69,7 +91,7 @@ void OnPacketReceived(const packet_header_t* const hdr)
             const packet_motorpower_t* pkt = (const packet_motorpower_t*)hdr;
             memcpy(&inputdata.power, &pkt->power, sizeof(pkt->power));
 
-            PrintDebug("CPT_MOTORPOWER: power="); PrintDebugLine(inputdata.power);
+            PrintDebugBla("CPT_MOTORPOWER: power="); PrintDebugBlaLine(inputdata.power);
 
             motors.Run(inputdata.direction.x, inputdata.direction.y, inputdata.power);
 
@@ -81,9 +103,9 @@ void OnPacketReceived(const packet_header_t* const hdr)
             memcpy(&inputdata.direction, &pkt->direction, sizeof(pkt->direction));
             memcpy(&inputdata.power, &pkt->power, sizeof(pkt->power));
 
-            PrintDebug("CPT_MOTORRUN: direction="); PrintDebug("(x="); PrintDebug(inputdata.direction.x); PrintDebug(", y="); PrintDebug(inputdata.direction.y); PrintDebug(")");
-            PrintDebug(", power="); PrintDebug(inputdata.power);
-            PrintDebugLine("");
+            PrintDebugBla("CPT_MOTORRUN: direction="); PrintDebugBla("(x="); PrintDebugBla(inputdata.direction.x); PrintDebugBla(", y="); PrintDebugBla(inputdata.direction.y); PrintDebugBla(")");
+            PrintDebugBla(", power="); PrintDebugBla(inputdata.power);
+            PrintDebugBlaLine("");
 
             motors.Run(inputdata.direction.x, inputdata.direction.y, inputdata.power);
 
@@ -92,8 +114,8 @@ void OnPacketReceived(const packet_header_t* const hdr)
         case CPT_MOTORSTOP:
         {
             inputdata = { { 0.0f, 0.0f }, 0.0f };
-            PrintDebug("CPT_MOTORSTOP");
-            PrintDebugLine("");
+            PrintDebugBla("CPT_MOTORSTOP");
+            PrintDebugBlaLine("");
 
             motors.Halt();
 
@@ -101,8 +123,8 @@ void OnPacketReceived(const packet_header_t* const hdr)
         }
         default:
         {
-            PrintDebug("Unknown packet type: "); PrintDebug(hdr->type);
-            PrintDebugLine("");
+            PrintDebugBla("Unknown packet type: "); PrintDebugBla(hdr->type);
+            PrintDebugBlaLine("");
 
             break;
         }
@@ -117,16 +139,16 @@ bool handle_packet(const uint8_t* const offset, const uint8_t* const end, size_t
     #ifdef M42_DEBUG
     uint16_t chksum = mkcrc16((const uint8_t* const)hdr + sizeof(hdr->chksum_header), sizeof(*hdr) - sizeof(hdr->chksum_header));
     #endif
-    PrintDebug("Header: chksum_header="); PrintDebug(hexstr(&hdr->chksum_header, sizeof(hdr->chksum_header))); PrintDebug(", chksum_data="); PrintDebug(hexstr(&hdr->chksum_data, sizeof(hdr->chksum_data)));
-    PrintDebug(", type="); PrintDebug(hdr->type); PrintDebug(", size="); PrintDebug(hdr->size);
-    PrintDebug(" (chksum="); PrintDebug(hexstr(&chksum, sizeof(chksum))); PrintDebug(", hex="); PrintDebug(hexstr(offset, sizeof(*hdr))); PrintDebug(")");
-    PrintDebugLine("");
+    PrintDebugBla("Header: chksum_header="); PrintDebugBla(hexstr(&hdr->chksum_header, sizeof(hdr->chksum_header))); PrintDebugBla(", chksum_data="); PrintDebugBla(hexstr(&hdr->chksum_data, sizeof(hdr->chksum_data)));
+    PrintDebugBla(", type="); PrintDebugBla(hdr->type); PrintDebugBla(", size="); PrintDebugBla(hdr->size);
+    PrintDebugBla(" (chksum="); PrintDebugBla(hexstr(&chksum, sizeof(chksum))); PrintDebugBla(", hex="); PrintDebugBla(hexstr(offset, sizeof(*hdr))); PrintDebugBla(")");
+    PrintDebugBlaLine("");
 
     if(packet_verifyheader(hdr) == 0)
     {
-        PrintDebug("Header checksum failed: ");
-        PrintDebug(hexstr(&hdr->chksum_header, sizeof(hdr->chksum_header))); PrintDebug(", "); PrintDebug(hexstr(&chksum, sizeof(chksum)));
-        PrintDebugLine("");
+        PrintDebugBla("Header checksum failed: ");
+        PrintDebugBla(hexstr(&hdr->chksum_header, sizeof(hdr->chksum_header))); PrintDebugBla(", "); PrintDebugBla(hexstr(&chksum, sizeof(chksum)));
+        PrintDebugBlaLine("");
         return false;
     }
 
@@ -139,15 +161,15 @@ bool handle_packet(const uint8_t* const offset, const uint8_t* const end, size_t
     #ifdef M42_DEBUG
     chksum = mkcrc16((const uint8_t* const)hdr + sizeof(*hdr), hdr->size);
     #endif
-    PrintDebug("Content: chksum_data="); PrintDebug(hexstr(&hdr->chksum_data, sizeof(hdr->chksum_data))); PrintDebug(", size="); PrintDebug(hdr->size);
-    PrintDebug(" (chksum="); PrintDebug(hexstr(&chksum, sizeof(chksum))); PrintDebug(", hex="); PrintDebug(hexstr((const uint8_t* const)offset + sizeof(*hdr), hdr->size)); PrintDebug(")");
-    PrintDebugLine("");
+    PrintDebugBla("Content: chksum_data="); PrintDebugBla(hexstr(&hdr->chksum_data, sizeof(hdr->chksum_data))); PrintDebugBla(", size="); PrintDebugBla(hdr->size);
+    PrintDebugBla(" (chksum="); PrintDebugBla(hexstr(&chksum, sizeof(chksum))); PrintDebugBla(", hex="); PrintDebugBla(hexstr((const uint8_t* const)offset + sizeof(*hdr), hdr->size)); PrintDebugBla(")");
+    PrintDebugBlaLine("");
 
     if(packet_verifydata(hdr) == 0)
     {
-        PrintDebug("Content checksum failed: ");
-        PrintDebug(hdr->chksum_data); PrintDebug(" / "); PrintDebug(chksum);
-        PrintDebugLine("");
+        PrintDebugBla("Content checksum failed: ");
+        PrintDebugBla(hdr->chksum_data); PrintDebugBla(" / "); PrintDebugBla(chksum);
+        PrintDebugBlaLine("");
         return false;
     }
 
@@ -166,8 +188,8 @@ void handle_data(void)
         // Should/could only happen if packet received claims it has an abnormally large data size. This could happen if:
         //   * Intentional buffer overflow attack / client uncautiously sending too large data
         //   * The buffer on the server side is smaller than the packet that is currently receiving
-        PrintDebug("Buffer overflow: offset="); PrintDebug(readOffset); PrintDebug(", max="); PrintDebug(sizeof(readBuffer));
-        PrintDebugLine("");
+        PrintDebugBla("Buffer overflow: offset="); PrintDebugBla(readOffset); PrintDebugBla(", max="); PrintDebugBla(sizeof(readBuffer));
+        PrintDebugBlaLine("");
         readOffset = 0U; // Ignore this rubbish
     }
 
@@ -175,11 +197,11 @@ void handle_data(void)
     readSize += readOffset;
     readOffset = 0U;
 
-    PrintDebug("Raw: size="); PrintDebug(readSize); PrintDebug(", hex="); PrintDebug(hexstr(readBuffer, readSize));
-    PrintDebugLine("");
+    PrintDebugBla("Raw: size="); PrintDebugBla(readSize); PrintDebugBla(", hex="); PrintDebugBla(hexstr(readBuffer, readSize));
+    PrintDebugBlaLine("");
 
-    PrintDebug("BUFFER BEGIN");
-    PrintDebugLine("");
+    PrintDebugBla("BUFFER BEGIN");
+    PrintDebugBlaLine("");
     size_t indexOffset = 0U;
     const uint8_t* const readBufferEnd = &readBuffer[readSize];
     size_t incrementSize;
@@ -190,14 +212,14 @@ void handle_data(void)
             break;
         }
 
-        PrintDebugLine("");
+        PrintDebugBlaLine("");
         indexOffset += incrementSize;
     }
 
     if(incrementSize == INVALID_SIZE)
     {
-        PrintDebug("BUFFER ERROR");
-        PrintDebugLine(""); PrintDebugLine("");
+        PrintDebugBla("BUFFER ERROR");
+        PrintDebugBlaLine(""); PrintDebugBlaLine("");
         packetFailCount++;
         SetStatus(false);
         return;
@@ -215,8 +237,8 @@ void handle_data(void)
         readBuffer[i] = readBuffer[indexOffset + i];
     }
 
-    PrintDebug("BUFFER END");
-    PrintDebugLine(""); PrintDebugLine("");
+    PrintDebugBla("BUFFER END");
+    PrintDebugBlaLine(""); PrintDebugBlaLine("");
 }
 
 void setup(void)
@@ -224,6 +246,8 @@ void setup(void)
     delay(2500);
     Serial.begin(9600, SERIAL_8N1);
     Serial.print("Initializing...");
+
+    debugButton.SetOnStateChangedEvent(toggleDebug);
 
     CommandSerial.begin(9600, SERIAL_8N1);
 
@@ -239,5 +263,7 @@ void setup(void)
 
 void loop(void)
 {
+    debugButton.Poll();
+
     handle_data();
 }
