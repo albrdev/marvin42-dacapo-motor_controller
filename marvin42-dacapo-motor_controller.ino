@@ -15,8 +15,8 @@ DCMotorAssembly motors;
 
 void SetStatus(const bool status)
 {
-    digitalWrite(D4, status ? HIGH : LOW);
-    digitalWrite(D7, !status ? HIGH : LOW);
+    //digitalWrite(D4, status ? HIGH : LOW);
+    //digitalWrite(D7, !status ? HIGH : LOW);
 }
 
 struct
@@ -119,13 +119,14 @@ bool handle_packet(const uint8_t* const offset, const uint8_t* const end, size_t
     #endif
     PrintDebug("Header: chksum_header="); PrintDebug(hexstr(&hdr->chksum_header, sizeof(hdr->chksum_header))); PrintDebug(", chksum_data="); PrintDebug(hexstr(&hdr->chksum_data, sizeof(hdr->chksum_data)));
     PrintDebug(", type="); PrintDebug(hdr->type); PrintDebug(", size="); PrintDebug(hdr->size);
-    PrintDebug(" (chksum="); PrintDebug(hexstr(&chksum, sizeof(chksum))); PrintDebug(", hex="); PrintDebug(hexstr(offset, sizeof(*hdr)));
-    PrintDebugLine(")");
+    PrintDebug(" (chksum="); PrintDebug(hexstr(&chksum, sizeof(chksum))); PrintDebug(", hex="); PrintDebug(hexstr(offset, sizeof(*hdr))); PrintDebug(")");
+    PrintDebugLine("");
 
     if(packet_verifyheader(hdr) == 0)
     {
         PrintDebug("Header checksum failed: ");
-        PrintDebug(hexstr(&hdr->chksum_header, sizeof(hdr->chksum_header))); PrintDebug(", "); PrintDebugLine(hexstr(&chksum, sizeof(chksum)));
+        PrintDebug(hexstr(&hdr->chksum_header, sizeof(hdr->chksum_header))); PrintDebug(", "); PrintDebug(hexstr(&chksum, sizeof(chksum)));
+        PrintDebugLine("");
         return false;
     }
 
@@ -139,13 +140,14 @@ bool handle_packet(const uint8_t* const offset, const uint8_t* const end, size_t
     chksum = mkcrc16((const uint8_t* const)hdr + sizeof(*hdr), hdr->size);
     #endif
     PrintDebug("Content: chksum_data="); PrintDebug(hexstr(&hdr->chksum_data, sizeof(hdr->chksum_data))); PrintDebug(", size="); PrintDebug(hdr->size);
-    PrintDebug(" (chksum="); PrintDebug(hexstr(&chksum, sizeof(chksum))); PrintDebug(", hex="); PrintDebug(hexstr((const uint8_t* const)offset + sizeof(*hdr), hdr->size));
-    PrintDebugLine(")");
+    PrintDebug(" (chksum="); PrintDebug(hexstr(&chksum, sizeof(chksum))); PrintDebug(", hex="); PrintDebug(hexstr((const uint8_t* const)offset + sizeof(*hdr), hdr->size)); PrintDebug(")");
+    PrintDebugLine("");
 
     if(packet_verifydata(hdr) == 0)
     {
         PrintDebug("Content checksum failed: ");
-        PrintDebug(hdr->chksum_data); PrintDebug(" / "); PrintDebugLine(chksum);
+        PrintDebug(hdr->chksum_data); PrintDebug(" / "); PrintDebug(chksum);
+        PrintDebugLine("");
         return false;
     }
 
@@ -165,6 +167,7 @@ void handle_data(void)
         //   * Intentional buffer overflow attack / client uncautiously sending too large data
         //   * The buffer on the server side is smaller than the packet that is currently receiving
         PrintDebug("Buffer overflow: offset="); PrintDebug(readOffset); PrintDebug(", max="); PrintDebug(sizeof(readBuffer));
+        PrintDebugLine("");
         readOffset = 0U; // Ignore this rubbish
     }
 
@@ -172,9 +175,11 @@ void handle_data(void)
     readSize += readOffset;
     readOffset = 0U;
 
-    PrintDebug("Raw: size="); PrintDebug(readSize); PrintDebug(", hex="); PrintDebugLine(hexstr(readBuffer, readSize));
+    PrintDebug("Raw: size="); PrintDebug(readSize); PrintDebug(", hex="); PrintDebug(hexstr(readBuffer, readSize));
+    PrintDebugLine("");
 
-    PrintDebugLine("BUFFER BEGIN");
+    PrintDebug("BUFFER BEGIN");
+    PrintDebugLine("");
     size_t indexOffset = 0U;
     const uint8_t* const readBufferEnd = &readBuffer[readSize];
     size_t incrementSize;
@@ -191,8 +196,8 @@ void handle_data(void)
 
     if(incrementSize == INVALID_SIZE)
     {
-        PrintDebugLine("BUFFER ERROR");
-        PrintDebugLine("");
+        PrintDebug("BUFFER ERROR");
+        PrintDebugLine(""); PrintDebugLine("");
         packetFailCount++;
         SetStatus(false);
         return;
@@ -210,8 +215,8 @@ void handle_data(void)
         readBuffer[i] = readBuffer[indexOffset + i];
     }
 
-    PrintDebugLine("BUFFER END");
-    PrintDebugLine("");
+    PrintDebug("BUFFER END");
+    PrintDebugLine(""); PrintDebugLine("");
 }
 
 void setup(void)
@@ -224,11 +229,12 @@ void setup(void)
 
     motors.Begin();
 
-    pinMode(D4, OUTPUT);
-    pinMode(D7, OUTPUT);
+    //pinMode(D4, OUTPUT);
+    //pinMode(D7, OUTPUT);
     SetStatus(true);
 
-    Serial.println("Done");
+    Serial.print("Done");
+    Serial.println("");
 }
 
 void loop(void)
