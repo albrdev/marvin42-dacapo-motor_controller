@@ -249,7 +249,7 @@ void setup(void)
 
     debugButton.SetOnStateChangedEvent(toggleDebug);
 
-    CommandSerial.begin(9600, SERIAL_8N1);
+    CommandSerial.begin(115200, SERIAL_8N1);
 
     motors.Begin();
 
