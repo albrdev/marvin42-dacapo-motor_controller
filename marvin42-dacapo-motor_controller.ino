@@ -27,7 +27,7 @@ struct
     float power;
 } inputdata = { { 0.0f, 0.0f }, 0.0f };
 
-uint8_t readBuffer[512];
+uint8_t readBuffer[64];
 size_t readOffset = 0U;
 #define INVALID_SIZE SIZE_MAX
 
