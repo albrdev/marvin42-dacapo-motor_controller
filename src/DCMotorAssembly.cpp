@@ -32,8 +32,8 @@ bool DCMotorAssembly::s_ShieldInitialized = false;
 void DCMotorAssembly::Run(const float directionX, const float directionY, float power)
 {
     const float maxIndex = DCMotorAssembly::k_VectorLength - 1U;
-    size_t x = (size_t)denormalize11((float)roundf(clamp11(directionX)), 0.0f, maxIndex);
-    size_t y = (size_t)denormalize11((float)roundf(clamp11(directionY)), 0.0f, maxIndex);
+    size_t x = (size_t)denormalize11(clamp11((float)roundf(directionX)), 0.0f, maxIndex);
+    size_t y = (size_t)denormalize11(clamp11((float)roundf(directionY)), 0.0f, maxIndex);
 
     power = clamp01(power);
     for(size_t i = 0U; i < DCMotorAssembly::k_DeviceCount; i++)
@@ -105,16 +105,16 @@ void DCMotorAssembly::SetYSpeed(const float up, const float down)
     SetBackSpeed(down);
 }
 
-void DCMotorAssembly::Rotate(float value)
+void DCMotorAssembly::Rotate(int direction, const float power)
 {
-    if(value == 0.0f)
+    if(direction == 0 || power == 0.0f)
     {
         Halt();
         return;
     }
 
-    value = clamp11(value);
-    SetXSpeed(value, -value);
+    direction = clamp11(direction) * clamp01(power);
+    SetXSpeed(direction, -direction);
 }
 
 void DCMotorAssembly::Halt(void)
