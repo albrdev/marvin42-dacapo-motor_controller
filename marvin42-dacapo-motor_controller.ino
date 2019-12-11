@@ -204,8 +204,8 @@ void handle_data(void)
     PrintDebugBla("BUFFER BEGIN");
     PrintDebugBlaLine("");
     size_t indexOffset = 0U;
+    size_t incrementSize = 0U;
     const uint8_t* const readBufferEnd = &readBuffer[readSize];
-    size_t incrementSize;
     while(indexOffset + sizeof(packet_header_t) <= readSize)
     {
         if(!handle_packet(readBuffer + indexOffset, readBufferEnd, &incrementSize))
