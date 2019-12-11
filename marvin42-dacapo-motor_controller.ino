@@ -23,9 +23,18 @@ void SetStatus(const bool status)
 
 struct
 {
-    vector2data_t direction;
-    float power;
-} inputdata = { { 0.0f, 0.0f }, 0.0f };
+    struct
+    {
+        vector2data_t direction;
+        float power;
+    } movement;
+
+    struct
+    {
+        int8_t direction;
+        float power;
+    } rotation;
+} inputdata = { { { 0.0f, 0.0f }, 0.0f}, { 0, 0.0f } };
 
 uint8_t readBuffer[512];
 size_t readOffset = 0U;
@@ -77,44 +86,57 @@ void OnPacketReceived(const packet_header_t* const hdr)
         case CPT_DIRECTION:
         {
             const packet_direction_t* pkt = (const packet_direction_t*)hdr;
-            memcpy(&inputdata.direction, &pkt->direction, sizeof(pkt->direction));
+            memcpy(&inputdata.movement.direction, &pkt->direction, sizeof(pkt->direction));
 
-            PrintDebugBla("CPT_DIRECTION: direction="); PrintDebugBla("(x="); PrintDebugBla(inputdata.direction.x); PrintDebugBla(", y="); PrintDebugBla(inputdata.direction.y); PrintDebugBla(")");
+            PrintDebugBla("CPT_DIRECTION: direction="); PrintDebugBla("(x="); PrintDebugBla(inputdata.movement.direction.x); PrintDebugBla(", y="); PrintDebugBla(inputdata.movement.direction.y); PrintDebugBla(")");
             PrintDebugBlaLine(""); 
 
-            motors.Run(inputdata.direction.x, inputdata.direction.y, inputdata.power);
+            motors.Run(inputdata.movement.direction.x, inputdata.movement.direction.y, inputdata.movement.power);
 
             break;
         }
         case CPT_MOTORPOWER:
         {
             const packet_motorpower_t* pkt = (const packet_motorpower_t*)hdr;
-            memcpy(&inputdata.power, &pkt->power, sizeof(pkt->power));
+            memcpy(&inputdata.movement.power, &pkt->power, sizeof(pkt->power));
 
-            PrintDebugBla("CPT_MOTORPOWER: power="); PrintDebugBlaLine(inputdata.power);
+            PrintDebugBla("CPT_MOTORPOWER: power="); PrintDebugBla(inputdata.movement.power);
             PrintDebugBlaLine("");
 
-            motors.Run(inputdata.direction.x, inputdata.direction.y, inputdata.power);
+            motors.Run(inputdata.movement.direction.x, inputdata.movement.direction.y, inputdata.movement.power);
+
+            break;
+        }
+        case CPT_MOTORROTATION:
+        {
+            const packet_motorrotation_t* pkt = (const packet_motorrotation_t*)hdr;
+            memcpy(&inputdata.rotation.direction, &pkt->direction, sizeof(pkt->direction));
+            memcpy(&inputdata.rotation.power, &pkt->power, sizeof(pkt->power));
+
+            PrintDebugBla("CPT_MOTORROTATION: direction="); PrintDebugBla(inputdata.rotation.direction); PrintDebugBla(", power="); PrintDebugBla(inputdata.rotation.power);
+            PrintDebugBlaLine("");
+
+            motors.Rotate(inputdata.rotation.direction, inputdata.rotation.power);
 
             break;
         }
         case CPT_MOTORRUN:
         {
             const packet_motorrun_t* pkt = (const packet_motorrun_t*)hdr;
-            memcpy(&inputdata.direction, &pkt->direction, sizeof(pkt->direction));
-            memcpy(&inputdata.power, &pkt->power, sizeof(pkt->power));
+            memcpy(&inputdata.movement.direction, &pkt->direction, sizeof(pkt->direction));
+            memcpy(&inputdata.movement.power, &pkt->power, sizeof(pkt->power));
 
-            PrintDebugBla("CPT_MOTORRUN: direction="); PrintDebugBla("(x="); PrintDebugBla(inputdata.direction.x); PrintDebugBla(", y="); PrintDebugBla(inputdata.direction.y); PrintDebugBla(")");
-            PrintDebugBla(", power="); PrintDebugBla(inputdata.power);
+            PrintDebugBla("CPT_MOTORRUN: direction="); PrintDebugBla("(x="); PrintDebugBla(inputdata.movement.direction.x); PrintDebugBla(", y="); PrintDebugBla(inputdata.movement.direction.y); PrintDebugBla(")");
+            PrintDebugBla(", power="); PrintDebugBla(inputdata.movement.power);
             PrintDebugBlaLine("");
 
-            motors.Run(inputdata.direction.x, inputdata.direction.y, inputdata.power);
+            motors.Run(inputdata.movement.direction.x, inputdata.movement.direction.y, inputdata.movement.power);
 
             break;
         }
         case CPT_MOTORSTOP:
         {
-            inputdata = { { 0.0f, 0.0f }, 0.0f };
+            inputdata.movement.direction = { 0.0f, 0.0f };
             PrintDebugBla("CPT_MOTORSTOP");
             PrintDebugBlaLine("");
 
