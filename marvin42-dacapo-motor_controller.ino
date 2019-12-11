@@ -27,7 +27,7 @@ struct
     float power;
 } inputdata = { { 0.0f, 0.0f }, 0.0f };
 
-uint8_t readBuffer[64];
+uint8_t readBuffer[512];
 size_t readOffset = 0U;
 #define INVALID_SIZE SIZE_MAX
 
@@ -205,7 +205,7 @@ void handle_data(void)
     size_t indexOffset = 0U;
     const uint8_t* const readBufferEnd = &readBuffer[readSize];
     size_t incrementSize;
-    while(indexOffset + sizeof(packet_header_t) < readSize)
+    while(indexOffset + sizeof(packet_header_t) <= readSize)
     {
         if(!handle_packet(readBuffer + indexOffset, readBufferEnd, &incrementSize))
         {
@@ -249,7 +249,7 @@ void setup(void)
 
     debugButton.SetOnStateChangedEvent(toggleDebug);
 
-    CommandSerial.begin(9600, SERIAL_8N1);
+    CommandSerial.begin(115200, SERIAL_8N1);
 
     motors.Begin();
 
