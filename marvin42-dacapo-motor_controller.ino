@@ -80,7 +80,7 @@ void OnPacketReceived(const packet_header_t* const hdr)
             memcpy(&inputdata.direction, &pkt->direction, sizeof(pkt->direction));
 
             PrintDebugBla("CPT_DIRECTION: direction="); PrintDebugBla("(x="); PrintDebugBla(inputdata.direction.x); PrintDebugBla(", y="); PrintDebugBla(inputdata.direction.y); PrintDebugBla(")");
-            PrintDebugBlaLine("");
+            PrintDebugBlaLine(""); 
 
             motors.Run(inputdata.direction.x, inputdata.direction.y, inputdata.power);
 
@@ -92,6 +92,7 @@ void OnPacketReceived(const packet_header_t* const hdr)
             memcpy(&inputdata.power, &pkt->power, sizeof(pkt->power));
 
             PrintDebugBla("CPT_MOTORPOWER: power="); PrintDebugBlaLine(inputdata.power);
+            PrintDebugBlaLine("");
 
             motors.Run(inputdata.direction.x, inputdata.direction.y, inputdata.power);
 
