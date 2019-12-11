@@ -6,6 +6,11 @@
 class Button
 {
 public:
+    /*! OnStateChangedEventHandler().
+    \fn OnStateChangedEventHandler().
+    \param .
+    \return .
+    */
     typedef void(*OnStateChangedEventHandler)(const bool);
 
 private:
@@ -15,9 +20,25 @@ private:
     OnStateChangedEventHandler m_OnStateChangedEvent = nullptr;
 
 public:
+    /*! GetState().
+    \fn GetState().
+    \param .
+    \return .
+    */
     bool GetState(void) const;
+    
+    /*! SetOnStateChangedEvent().
+    \fn SetOnStateChangeEvent().
+    \param .
+    \return .
+    */
     void SetOnStateChangedEvent(const OnStateChangedEventHandler value);
 
+    /*! Poll().
+    \fn Poll().
+    \param .
+    \return .
+    */
     virtual void Poll(void);
 
     Button(const uint8_t pin);
