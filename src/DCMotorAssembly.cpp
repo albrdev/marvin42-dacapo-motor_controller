@@ -45,7 +45,7 @@ void DCMotorAssembly::Run(const float directionX, const float directionY, float 
 void DCMotorAssembly::SetSpeed(const float value)
 {
     uint8_t speed = denormalize01(fabs(value), 0, 255);
-    uint8_t direction = sgn(value) > 0 ? FORWARD : BACKWARD;
+    uint8_t direction = value < 0.0f ? BACKWARD : FORWARD;
     if(value == 0.0f)
     {
         Halt();
@@ -66,7 +66,7 @@ void DCMotorAssembly::SetSpeed(const size_t port, const float value)
     }
 
     m_Devices[port]->setSpeed(denormalize01(fabsf(value), 0, 255));
-    m_Devices[port]->run(sgn(value) > 0 ? FORWARD : BACKWARD);
+    m_Devices[port]->run(value < 0.0f ? BACKWARD : FORWARD);
 }
 
 void DCMotorAssembly::SetLeftSpeed(const float value)
@@ -105,7 +105,7 @@ void DCMotorAssembly::SetYSpeed(const float up, const float down)
     SetBackSpeed(down);
 }
 
-void DCMotorAssembly::Rotate(int direction, const float power)
+void DCMotorAssembly::Rotate(const int direction, const float power)
 {
     if(direction == 0 || power == 0.0f)
     {
@@ -113,8 +113,8 @@ void DCMotorAssembly::Rotate(int direction, const float power)
         return;
     }
 
-    direction = clamp11(direction) * clamp01(power);
-    SetXSpeed(direction, -direction);
+    float tmp = clamp11(direction) * clamp01(power);
+    SetXSpeed(tmp, -tmp);
 }
 
 void DCMotorAssembly::Halt(void)

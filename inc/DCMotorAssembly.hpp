@@ -86,7 +86,7 @@ public:
     \param .
     \return .
     */
-    void Rotate(int direction, const float power);
+    void Rotate(const int direction, const float power);
 
     /*! Halt().
     \fn Halt().
