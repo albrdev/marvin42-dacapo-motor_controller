@@ -75,11 +75,11 @@ void OnPacketReceived(const packet_header_t* const hdr)
             memcpy(&left, &pkt->left, sizeof(pkt->left));
             memcpy(&right, &pkt->right, sizeof(pkt->right));
 
-            PrintDebugBla("CPT_MOTORBALANCE: left="); PrintDebugBla(left); PrintDebugBla(", right="); PrintDebugBla(right);
-            PrintDebugBlaLine("");
-
             motors.SetLeftSpeed(left);
             motors.SetRightSpeed(right);
+
+            PrintDebugBla("CPT_MOTORBALANCE: left="); PrintDebugBla(left); PrintDebugBla(", right="); PrintDebugBla(right);
+            PrintDebugBlaLine("");
 
             break;
         }
@@ -88,10 +88,10 @@ void OnPacketReceived(const packet_header_t* const hdr)
             const packet_direction_t* pkt = (const packet_direction_t*)hdr;
             memcpy(&inputdata.movement.direction, &pkt->direction, sizeof(pkt->direction));
 
+            motors.Run(inputdata.movement.direction.x, inputdata.movement.direction.y, inputdata.movement.power);
+
             PrintDebugBla("CPT_DIRECTION: direction="); PrintDebugBla("(x="); PrintDebugBla(inputdata.movement.direction.x); PrintDebugBla(", y="); PrintDebugBla(inputdata.movement.direction.y); PrintDebugBla(")");
             PrintDebugBlaLine(""); 
-
-            motors.Run(inputdata.movement.direction.x, inputdata.movement.direction.y, inputdata.movement.power);
 
             break;
         }
@@ -100,10 +100,10 @@ void OnPacketReceived(const packet_header_t* const hdr)
             const packet_motorpower_t* pkt = (const packet_motorpower_t*)hdr;
             memcpy(&inputdata.movement.power, &pkt->power, sizeof(pkt->power));
 
+            motors.Run(inputdata.movement.direction.x, inputdata.movement.direction.y, inputdata.movement.power);
+
             PrintDebugBla("CPT_MOTORPOWER: power="); PrintDebugBla(inputdata.movement.power);
             PrintDebugBlaLine("");
-
-            motors.Run(inputdata.movement.direction.x, inputdata.movement.direction.y, inputdata.movement.power);
 
             break;
         }
@@ -113,10 +113,10 @@ void OnPacketReceived(const packet_header_t* const hdr)
             memcpy(&inputdata.rotation.direction, &pkt->direction, sizeof(pkt->direction));
             memcpy(&inputdata.rotation.power, &pkt->power, sizeof(pkt->power));
 
+            motors.Rotate(-inputdata.rotation.direction, inputdata.rotation.power);
+
             PrintDebugBla("CPT_MOTORROTATION: direction="); PrintDebugBla(inputdata.rotation.direction); PrintDebugBla(", power="); PrintDebugBla(inputdata.rotation.power);
             PrintDebugBlaLine("");
-
-            motors.Rotate(inputdata.rotation.direction, inputdata.rotation.power);
 
             break;
         }
@@ -126,21 +126,23 @@ void OnPacketReceived(const packet_header_t* const hdr)
             memcpy(&inputdata.movement.direction, &pkt->direction, sizeof(pkt->direction));
             memcpy(&inputdata.movement.power, &pkt->power, sizeof(pkt->power));
 
+            motors.Run(inputdata.movement.direction.x, inputdata.movement.direction.y, inputdata.movement.power);
+
             PrintDebugBla("CPT_MOTORRUN: direction="); PrintDebugBla("(x="); PrintDebugBla(inputdata.movement.direction.x); PrintDebugBla(", y="); PrintDebugBla(inputdata.movement.direction.y); PrintDebugBla(")");
             PrintDebugBla(", power="); PrintDebugBla(inputdata.movement.power);
             PrintDebugBlaLine("");
-
-            motors.Run(inputdata.movement.direction.x, inputdata.movement.direction.y, inputdata.movement.power);
 
             break;
         }
         case CPT_MOTORSTOP:
         {
             inputdata.movement.direction = { 0.0f, 0.0f };
-            PrintDebugBla("CPT_MOTORSTOP");
-            PrintDebugBlaLine("");
+            inputdata.rotation.direction =  0 ;
 
             motors.Halt();
+
+            PrintDebugBla("CPT_MOTORSTOP");
+            PrintDebugBlaLine("");
 
             break;
         }
