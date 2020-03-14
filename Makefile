@@ -2,12 +2,12 @@ CC	:= pio
 
 .PHONY: all
 all:
-	$(CC) run -t upload
-
-.PHONY: dry
-dry:
 	$(CC) run
+
+.PHONY: upload
+upload:
+	$(CC) run --target upload
 
 .PHONY: clean
 clean: clean
-	$(CC) run -t clean
+	$(CC) run --target clean
