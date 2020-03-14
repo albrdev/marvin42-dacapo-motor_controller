@@ -270,7 +270,7 @@ void setup(void)
 {
     delay(2500);
     Serial.begin(9600, SERIAL_8N1);
-    Serial.print("Initializing...");
+    Serial.println("Initializing...");
 
     debugButton.SetOnStateChangedEvent(toggleDebug);
 
@@ -282,8 +282,9 @@ void setup(void)
     //pinMode(D7, OUTPUT);
     SetStatus(true);
 
-    Serial.print("Done");
-    Serial.println("");
+    Serial.println("Done");
+    Serial.println();
+    Serial.flush();
 }
 
 void loop(void)
