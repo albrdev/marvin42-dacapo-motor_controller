@@ -77,6 +77,7 @@ void OnPacketReceived(const packet_header_t* const hdr)
 
             motors.SetLeftSpeed(left);
             motors.SetRightSpeed(right);
+            Serial.println("GotBal");
 
             PrintDebugBla("CPT_MOTORBALANCE: left="); PrintDebugBla(left); PrintDebugBla(", right="); PrintDebugBla(right);
             PrintDebugBlaLine("");
@@ -89,6 +90,7 @@ void OnPacketReceived(const packet_header_t* const hdr)
             memcpy(&inputdata.movement.direction, &pkt->direction, sizeof(pkt->direction));
 
             motors.Run(inputdata.movement.direction.x, inputdata.movement.direction.y, inputdata.movement.power);
+            Serial.println("GotDir");
 
             PrintDebugBla("CPT_DIRECTION: direction="); PrintDebugBla("(x="); PrintDebugBla(inputdata.movement.direction.x); PrintDebugBla(", y="); PrintDebugBla(inputdata.movement.direction.y); PrintDebugBla(")");
             PrintDebugBlaLine(""); 
@@ -101,6 +103,7 @@ void OnPacketReceived(const packet_header_t* const hdr)
             memcpy(&inputdata.movement.power, &pkt->power, sizeof(pkt->power));
 
             motors.Run(inputdata.movement.direction.x, inputdata.movement.direction.y, inputdata.movement.power);
+            Serial.println("GotPow");
 
             PrintDebugBla("CPT_MOTORPOWER: power="); PrintDebugBla(inputdata.movement.power);
             PrintDebugBlaLine("");
@@ -114,6 +117,8 @@ void OnPacketReceived(const packet_header_t* const hdr)
             memcpy(&inputdata.rotation.power, &pkt->power, sizeof(pkt->power));
 
             motors.Rotate(-inputdata.rotation.direction, inputdata.rotation.power);
+            Serial.println("GotRot");
+            Serial.flush();
 
             PrintDebugBla("CPT_MOTORROTATION: direction="); PrintDebugBla(inputdata.rotation.direction); PrintDebugBla(", power="); PrintDebugBla(inputdata.rotation.power);
             PrintDebugBlaLine("");
@@ -127,6 +132,7 @@ void OnPacketReceived(const packet_header_t* const hdr)
             memcpy(&inputdata.movement.power, &pkt->power, sizeof(pkt->power));
 
             motors.Run(inputdata.movement.direction.x, inputdata.movement.direction.y, inputdata.movement.power);
+            Serial.println("GotRun");
 
             PrintDebugBla("CPT_MOTORRUN: direction="); PrintDebugBla("(x="); PrintDebugBla(inputdata.movement.direction.x); PrintDebugBla(", y="); PrintDebugBla(inputdata.movement.direction.y); PrintDebugBla(")");
             PrintDebugBla(", power="); PrintDebugBla(inputdata.movement.power);
@@ -140,6 +146,7 @@ void OnPacketReceived(const packet_header_t* const hdr)
             inputdata.rotation.direction =  0 ;
 
             motors.Halt();
+            Serial.println("GotStop");
 
             PrintDebugBla("CPT_MOTORSTOP");
             PrintDebugBlaLine("");
@@ -148,6 +155,8 @@ void OnPacketReceived(const packet_header_t* const hdr)
         }
         default:
         {
+            Serial.println("GotBla");
+
             PrintDebugBla("Unknown packet type: "); PrintDebugBla(hdr->type);
             PrintDebugBlaLine("");
 
@@ -160,6 +169,9 @@ bool handle_packet(const uint8_t* const offset, const uint8_t* const end, size_t
 {
     const packet_header_t* hdr = (const packet_header_t*)offset;
     *incrementSize = INVALID_SIZE;
+
+    Serial.println("Chk");
+    Serial.flush();
 
     #ifdef M42_DEBUG
     uint16_t chksum = mkcrc16((const uint8_t* const)hdr + sizeof(hdr->chksum_header), sizeof(*hdr) - sizeof(hdr->chksum_header));
@@ -218,9 +230,16 @@ void handle_data(void)
         readOffset = 0U; // Ignore this rubbish
     }
 
+    Serial.println("Begin");
+    Serial.flush();
+    digitalWrite(15, HIGH);
     size_t readSize = CommandSerial.readBytes(readBuffer + readOffset, sizeof(readBuffer) - readOffset);
+    digitalWrite(15, LOW);
     readSize += readOffset;
     readOffset = 0U;
+
+    Serial.println("Recv");
+    Serial.flush();
 
     PrintDebugBla("Raw: size="); PrintDebugBla(readSize); PrintDebugBla(", hex="); PrintDebugBla(hexstr(readBuffer, readSize));
     PrintDebugBlaLine("");
@@ -273,6 +292,8 @@ void setup(void)
     Serial.println("Initializing...");
 
     debugButton.SetOnStateChangedEvent(toggleDebug);
+    pinMode(15, OUTPUT);
+    digitalWrite(15, LOW);
 
     CommandSerial.begin(115200, SERIAL_8N1);
 
