@@ -279,6 +279,7 @@ void setup(void)
     digitalWrite(15, LOW);
 
     CommandSerial.begin(115200, SERIAL_8N1);
+    CommandSerial.setTimeout(50UL);
 
     motors.Begin();
 
