@@ -13,7 +13,7 @@ Button debugButton(13);
 #define D4 4
 #define D7 7
 
-#define CommandSerial Serial2
+#define CommandSerial Serial1
 
 void SetStatus(const bool status)
 {
@@ -36,7 +36,7 @@ struct
     } rotation;
 } inputdata = { { { 0.0f, 0.0f }, 0.0f}, { 0, 0.0f } };
 
-uint8_t readBuffer[512];
+uint8_t readBuffer[64];
 size_t readOffset = 0U;
 #define INVALID_SIZE SIZE_MAX
 
@@ -77,10 +77,9 @@ void OnPacketReceived(const packet_header_t* const hdr)
 
             motors.SetLeftSpeed(left);
             motors.SetRightSpeed(right);
-            Serial.println("GotBal");
 
             PrintDebugBla("CPT_MOTORBALANCE: left="); PrintDebugBla(left); PrintDebugBla(", right="); PrintDebugBla(right);
-            PrintDebugBlaLine("");
+            PrintDebugBlaLine();
 
             break;
         }
@@ -90,10 +89,9 @@ void OnPacketReceived(const packet_header_t* const hdr)
             memcpy(&inputdata.movement.direction, &pkt->direction, sizeof(pkt->direction));
 
             motors.Run(inputdata.movement.direction.x, inputdata.movement.direction.y, inputdata.movement.power);
-            Serial.println("GotDir");
 
             PrintDebugBla("CPT_DIRECTION: direction="); PrintDebugBla("(x="); PrintDebugBla(inputdata.movement.direction.x); PrintDebugBla(", y="); PrintDebugBla(inputdata.movement.direction.y); PrintDebugBla(")");
-            PrintDebugBlaLine(""); 
+            PrintDebugBlaLine(); 
 
             break;
         }
@@ -103,10 +101,9 @@ void OnPacketReceived(const packet_header_t* const hdr)
             memcpy(&inputdata.movement.power, &pkt->power, sizeof(pkt->power));
 
             motors.Run(inputdata.movement.direction.x, inputdata.movement.direction.y, inputdata.movement.power);
-            Serial.println("GotPow");
 
             PrintDebugBla("CPT_MOTORPOWER: power="); PrintDebugBla(inputdata.movement.power);
-            PrintDebugBlaLine("");
+            PrintDebugBlaLine();
 
             break;
         }
@@ -117,11 +114,9 @@ void OnPacketReceived(const packet_header_t* const hdr)
             memcpy(&inputdata.rotation.power, &pkt->power, sizeof(pkt->power));
 
             motors.Rotate(-inputdata.rotation.direction, inputdata.rotation.power);
-            Serial.println("GotRot");
-            Serial.flush();
 
             PrintDebugBla("CPT_MOTORROTATION: direction="); PrintDebugBla(inputdata.rotation.direction); PrintDebugBla(", power="); PrintDebugBla(inputdata.rotation.power);
-            PrintDebugBlaLine("");
+            PrintDebugBlaLine();
 
             break;
         }
@@ -132,11 +127,10 @@ void OnPacketReceived(const packet_header_t* const hdr)
             memcpy(&inputdata.movement.power, &pkt->power, sizeof(pkt->power));
 
             motors.Run(inputdata.movement.direction.x, inputdata.movement.direction.y, inputdata.movement.power);
-            Serial.println("GotRun");
 
             PrintDebugBla("CPT_MOTORRUN: direction="); PrintDebugBla("(x="); PrintDebugBla(inputdata.movement.direction.x); PrintDebugBla(", y="); PrintDebugBla(inputdata.movement.direction.y); PrintDebugBla(")");
             PrintDebugBla(", power="); PrintDebugBla(inputdata.movement.power);
-            PrintDebugBlaLine("");
+            PrintDebugBlaLine();
 
             break;
         }
@@ -146,19 +140,16 @@ void OnPacketReceived(const packet_header_t* const hdr)
             inputdata.rotation.direction =  0 ;
 
             motors.Halt();
-            Serial.println("GotStop");
 
             PrintDebugBla("CPT_MOTORSTOP");
-            PrintDebugBlaLine("");
+            PrintDebugBlaLine();
 
             break;
         }
         default:
         {
-            Serial.println("GotBla");
-
             PrintDebugBla("Unknown packet type: "); PrintDebugBla(hdr->type);
-            PrintDebugBlaLine("");
+            PrintDebugBlaLine();
 
             break;
         }
@@ -170,22 +161,19 @@ bool handle_packet(const uint8_t* const offset, const uint8_t* const end, size_t
     const packet_header_t* hdr = (const packet_header_t*)offset;
     *incrementSize = INVALID_SIZE;
 
-    Serial.println("Chk");
-    Serial.flush();
-
     #ifdef M42_DEBUG
     uint16_t chksum = mkcrc16((const uint8_t* const)hdr + sizeof(hdr->chksum_header), sizeof(*hdr) - sizeof(hdr->chksum_header));
     #endif
     PrintDebugBla("Header: chksum_header="); PrintDebugBla(hexstr(&hdr->chksum_header, sizeof(hdr->chksum_header))); PrintDebugBla(", chksum_data="); PrintDebugBla(hexstr(&hdr->chksum_data, sizeof(hdr->chksum_data)));
     PrintDebugBla(", type="); PrintDebugBla(hdr->type); PrintDebugBla(", size="); PrintDebugBla(hdr->size);
     PrintDebugBla(" (chksum="); PrintDebugBla(hexstr(&chksum, sizeof(chksum))); PrintDebugBla(", hex="); PrintDebugBla(hexstr(offset, sizeof(*hdr))); PrintDebugBla(")");
-    PrintDebugBlaLine("");
+    PrintDebugBlaLine();
 
     if(packet_verifyheader(hdr) == 0)
     {
         PrintDebugBla("Header checksum failed: ");
         PrintDebugBla(hexstr(&hdr->chksum_header, sizeof(hdr->chksum_header))); PrintDebugBla(", "); PrintDebugBla(hexstr(&chksum, sizeof(chksum)));
-        PrintDebugBlaLine("");
+        PrintDebugBlaLine();
         return false;
     }
 
@@ -200,13 +188,13 @@ bool handle_packet(const uint8_t* const offset, const uint8_t* const end, size_t
     #endif
     PrintDebugBla("Content: chksum_data="); PrintDebugBla(hexstr(&hdr->chksum_data, sizeof(hdr->chksum_data))); PrintDebugBla(", size="); PrintDebugBla(hdr->size);
     PrintDebugBla(" (chksum="); PrintDebugBla(hexstr(&chksum, sizeof(chksum))); PrintDebugBla(", hex="); PrintDebugBla(hexstr((const uint8_t* const)offset + sizeof(*hdr), hdr->size)); PrintDebugBla(")");
-    PrintDebugBlaLine("");
+    PrintDebugBlaLine();
 
     if(packet_verifydata(hdr) == 0)
     {
         PrintDebugBla("Content checksum failed: ");
         PrintDebugBla(hdr->chksum_data); PrintDebugBla(" / "); PrintDebugBla(chksum);
-        PrintDebugBlaLine("");
+        PrintDebugBlaLine();
         return false;
     }
 
@@ -226,26 +214,21 @@ void handle_data(void)
         //   * Intentional buffer overflow attack / client uncautiously sending too large data
         //   * The buffer on the server side is smaller than the packet that is currently receiving
         PrintDebugBla("Buffer overflow: offset="); PrintDebugBla(readOffset); PrintDebugBla(", max="); PrintDebugBla(sizeof(readBuffer));
-        PrintDebugBlaLine("");
+        PrintDebugBlaLine();
         readOffset = 0U; // Ignore this rubbish
     }
 
-    Serial.println("Begin");
-    Serial.flush();
     digitalWrite(15, HIGH);
     size_t readSize = CommandSerial.readBytes(readBuffer + readOffset, sizeof(readBuffer) - readOffset);
     digitalWrite(15, LOW);
     readSize += readOffset;
     readOffset = 0U;
 
-    Serial.println("Recv");
-    Serial.flush();
-
     PrintDebugBla("Raw: size="); PrintDebugBla(readSize); PrintDebugBla(", hex="); PrintDebugBla(hexstr(readBuffer, readSize));
-    PrintDebugBlaLine("");
+    PrintDebugBlaLine();
 
     PrintDebugBla("BUFFER BEGIN");
-    PrintDebugBlaLine("");
+    PrintDebugBlaLine();
     size_t indexOffset = 0U;
     size_t incrementSize = 0U;
     const uint8_t* const readBufferEnd = &readBuffer[readSize];
@@ -256,14 +239,14 @@ void handle_data(void)
             break;
         }
 
-        PrintDebugBlaLine("");
+        PrintDebugBlaLine();
         indexOffset += incrementSize;
     }
 
     if(incrementSize == INVALID_SIZE)
     {
         PrintDebugBla("BUFFER ERROR");
-        PrintDebugBlaLine(""); PrintDebugBlaLine("");
+        PrintDebugBlaLine(); PrintDebugBlaLine();
         packetFailCount++;
         SetStatus(false);
         return;
@@ -282,7 +265,7 @@ void handle_data(void)
     }
 
     PrintDebugBla("BUFFER END");
-    PrintDebugBlaLine(""); PrintDebugBlaLine("");
+    PrintDebugBlaLine(); PrintDebugBlaLine();
 }
 
 void setup(void)
