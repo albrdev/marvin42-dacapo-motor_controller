@@ -43,6 +43,9 @@ size_t readOffset = 0U;
 size_t packetSuccessCount = 0U;
 size_t packetFailCount = 0U;
 
+#define KA_INTERVAL (1UL * 1000UL)
+unsigned long int nextAutoHalt = 0UL;
+
 bool debug = false;
 #define PrintDebugBla(msg) if(debug) { PrintDebug(msg); }
 #define PrintDebugBlaLine(msg) if(debug) { PrintDebugLine(msg); }
@@ -61,6 +64,14 @@ void toggleDebug(const bool state)
         PrintDebugBlaLine("DEBUG: ON");
 
     delay(350);
+}
+
+void Halt(void)
+{
+    inputdata.movement.direction = { 0.0f, 0.0f };
+    inputdata.rotation.direction = 0;
+
+    motors.Halt();
 }
 
 void OnPacketReceived(const packet_header_t* const hdr)
@@ -136,12 +147,16 @@ void OnPacketReceived(const packet_header_t* const hdr)
         }
         case CPT_MOTORSTOP:
         {
-            inputdata.movement.direction = { 0.0f, 0.0f };
-            inputdata.rotation.direction =  0 ;
-
-            motors.Halt();
+            Halt();
 
             PrintDebugBla("CPT_MOTORSTOP");
+            PrintDebugBlaLine();
+
+            break;
+        }
+        case PT_SYN:
+        {
+            PrintDebugBla("PT_SYN");
             PrintDebugBlaLine();
 
             break;
@@ -154,6 +169,8 @@ void OnPacketReceived(const packet_header_t* const hdr)
             break;
         }
     }
+
+    nextAutoHalt = millis() + KA_INTERVAL;
 }
 
 bool handle_packet(const uint8_t* const offset, const uint8_t* const end, size_t* const incrementSize)
@@ -297,4 +314,13 @@ void loop(void)
     debugButton.Poll();
 
     handle_data();
+
+    if((long)(millis() - nextAutoHalt) >= 0L)
+    {
+        Halt();
+        nextAutoHalt = millis() + KA_INTERVAL;
+
+        PrintDebugBla("Auto halt");
+        PrintDebugBlaLine();
+    }
 }
