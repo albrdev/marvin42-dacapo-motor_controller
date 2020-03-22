@@ -1,6 +1,7 @@
 #include <stdint.h>
 #include <stdarg.h>
 #include "DCMotorAssembly.hpp"
+#include "HC_SR04.hpp"
 #include "Button.hpp"
 #include "crc.h"
 #include "packet.h"
@@ -8,6 +9,11 @@
 #include "generic.hpp"
 
 DCMotorAssembly motors;
+
+#define BRAKE_THRESHOLD 50.0f   // cm
+HC_SR04 sonicSensor(2, 3);
+float distance = 0.0f;
+
 Button debugButton(13);
 
 #define D4 4
@@ -75,11 +81,17 @@ void OnPacketReceived(const packet_header_t* const hdr)
             memcpy(&left, &pkt->left, sizeof(pkt->left));
             memcpy(&right, &pkt->right, sizeof(pkt->right));
 
-            motors.SetLeftSpeed(left);
-            motors.SetRightSpeed(right);
-
             PrintDebugBla("CPT_MOTORBALANCE: left="); PrintDebugBla(left); PrintDebugBla(", right="); PrintDebugBla(right);
             PrintDebugBlaLine();
+
+            /*if(inputdata.movement.direction.y > 0.0f && distance <= BRAKE_THRESHOLD)
+            {
+                PrintDebugBla("Halt");
+                break;
+            }*/
+
+            motors.SetLeftSpeed(left);
+            motors.SetRightSpeed(right);
 
             break;
         }
@@ -88,10 +100,16 @@ void OnPacketReceived(const packet_header_t* const hdr)
             const packet_direction_t* pkt = (const packet_direction_t*)hdr;
             memcpy(&inputdata.movement.direction, &pkt->direction, sizeof(pkt->direction));
 
+            PrintDebugBla("CPT_DIRECTION: direction="); PrintDebugBla("(x="); PrintDebugBla(inputdata.movement.direction.x); PrintDebugBla(", y="); PrintDebugBla(inputdata.movement.direction.y); PrintDebugBla(")");
+            PrintDebugBlaLine();
+
             motors.Run(inputdata.movement.direction.x, inputdata.movement.direction.y, inputdata.movement.power);
 
-            PrintDebugBla("CPT_DIRECTION: direction="); PrintDebugBla("(x="); PrintDebugBla(inputdata.movement.direction.x); PrintDebugBla(", y="); PrintDebugBla(inputdata.movement.direction.y); PrintDebugBla(")");
-            PrintDebugBlaLine(); 
+            /*if(inputdata.movement.direction.y > 0.0f && distance <= BRAKE_THRESHOLD)
+            {
+                PrintDebugBla("Halt");
+                break;
+            }*/
 
             break;
         }
@@ -100,10 +118,16 @@ void OnPacketReceived(const packet_header_t* const hdr)
             const packet_motorpower_t* pkt = (const packet_motorpower_t*)hdr;
             memcpy(&inputdata.movement.power, &pkt->power, sizeof(pkt->power));
 
-            motors.Run(inputdata.movement.direction.x, inputdata.movement.direction.y, inputdata.movement.power);
-
             PrintDebugBla("CPT_MOTORPOWER: power="); PrintDebugBla(inputdata.movement.power);
             PrintDebugBlaLine();
+
+            /*if(inputdata.movement.direction.y > 0.0f && distance <= BRAKE_THRESHOLD)
+            {
+                PrintDebugBla("Halt");
+                break;
+            }*/
+
+            motors.Run(inputdata.movement.direction.x, inputdata.movement.direction.y, inputdata.movement.power);
 
             break;
         }
@@ -113,10 +137,10 @@ void OnPacketReceived(const packet_header_t* const hdr)
             memcpy(&inputdata.rotation.direction, &pkt->direction, sizeof(pkt->direction));
             memcpy(&inputdata.rotation.power, &pkt->power, sizeof(pkt->power));
 
-            motors.Rotate(-inputdata.rotation.direction, inputdata.rotation.power);
-
             PrintDebugBla("CPT_MOTORROTATION: direction="); PrintDebugBla(inputdata.rotation.direction); PrintDebugBla(", power="); PrintDebugBla(inputdata.rotation.power);
             PrintDebugBlaLine();
+
+            motors.Rotate(-inputdata.rotation.direction, inputdata.rotation.power);
 
             break;
         }
@@ -126,11 +150,17 @@ void OnPacketReceived(const packet_header_t* const hdr)
             memcpy(&inputdata.movement.direction, &pkt->direction, sizeof(pkt->direction));
             memcpy(&inputdata.movement.power, &pkt->power, sizeof(pkt->power));
 
-            motors.Run(inputdata.movement.direction.x, inputdata.movement.direction.y, inputdata.movement.power);
-
             PrintDebugBla("CPT_MOTORRUN: direction="); PrintDebugBla("(x="); PrintDebugBla(inputdata.movement.direction.x); PrintDebugBla(", y="); PrintDebugBla(inputdata.movement.direction.y); PrintDebugBla(")");
             PrintDebugBla(", power="); PrintDebugBla(inputdata.movement.power);
             PrintDebugBlaLine();
+
+            /*if(inputdata.movement.direction.y > 0.0f && distance <= BRAKE_THRESHOLD)
+            {
+                PrintDebugBla("Halt");
+                break;
+            }*/
+
+            motors.Run(inputdata.movement.direction.x, inputdata.movement.direction.y, inputdata.movement.power);
 
             break;
         }
@@ -139,10 +169,10 @@ void OnPacketReceived(const packet_header_t* const hdr)
             inputdata.movement.direction = { 0.0f, 0.0f };
             inputdata.rotation.direction =  0 ;
 
-            motors.Halt();
-
             PrintDebugBla("CPT_MOTORSTOP");
             PrintDebugBlaLine();
+
+            motors.Halt();
 
             break;
         }
@@ -295,6 +325,12 @@ void setup(void)
 void loop(void)
 {
     debugButton.Poll();
+
+    /*distance = sonicSensor.GetDistance();
+    if(distance != -1.0f && distance <= BRAKE_THRESHOLD)
+    {
+        motors.Halt();
+    }*/
 
     handle_data();
 }

@@ -68,7 +68,7 @@
     <NMakeCleanCommandLine>platformio -f -c visualstudio run --target clean</NMakeCleanCommandLine>
     <NMakePreprocessorDefinitions>PLATFORMIO=40003;ARDUINO_AVR_ADK;F_CPU=16000000L;ARDUINO_ARCH_AVR;ARDUINO=10805;__AVR_ATmega2560__</NMakePreprocessorDefinitions>
     <NMakeIncludeSearchPath>$(HOMEDRIVE)$(HOMEPATH)/.platformio/packages/framework-arduinoavr/cores/arduino;$(HOMEDRIVE)$(HOMEPATH)/.platformio/packages/framework-arduinoavr/variants/mega;$(HOMEDRIVE)$(HOMEPATH)/.platformio/packages/framework-arduinoavr/libraries/__cores__/arduino/EEPROM/src;$(HOMEDRIVE)$(HOMEPATH)/.platformio/packages/framework-arduinoavr/libraries/__cores__/arduino/HID/src;$(HOMEDRIVE)$(HOMEPATH)/.platformio/packages/framework-arduinoavr/libraries/__cores__/arduino/SPI/src;$(HOMEDRIVE)$(HOMEPATH)/.platformio/packages/framework-arduinoavr/libraries/__cores__/arduino/SoftwareSerial/src;$(HOMEDRIVE)$(HOMEPATH)/.platformio/packages/framework-arduinoavr/libraries/__cores__/arduino/Wire/src;$(HOMEDRIVE)$(HOMEPATH)/.platformio/packages/toolchain-atmelavr/avr/include;$(HOMEDRIVE)$(HOMEPATH)/.platformio/packages/toolchain-atmelavr/lib/gcc/avr/5.4.0/include;$(HOMEDRIVE)$(HOMEPATH)/.platformio/packages/toolchain-atmelavr/lib/gcc/avr/5.4.0/include-fixed;$(HOMEDRIVE)$(HOMEPATH)/.platformio/packages/tool-unity;$(NMakeIncludeSearchPath)</NMakeIncludeSearchPath>
-    <IncludePath>$(ProjectDir)\inc;$(ProjectDir)\ext\marvin42-dacapo-shared_libraries\inc;$(IncludePath)</IncludePath>
+    <IncludePath>C:\Users\floff\dev\github\albrdev\marvin42-dacapo-motor_controller\.pio\libdeps\mega\Adafruit Motor Shield V2 Library_ID783;$(ProjectDir)\ext\marvin42-dacapo-shared_libraries\inc;$(ProjectDir)\inc;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <NMakeBuildCommandLine>platformio -f -c visualstudio run</NMakeBuildCommandLine>
@@ -104,11 +104,15 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Button.cpp" />
+    <ClCompile Include="src\Component.cpp" />
     <ClCompile Include="src\DCMotorAssembly.cpp" />
+    <ClCompile Include="src\HC_SR04.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="inc\Button.hpp" />
+    <ClInclude Include="inc\Component.hpp" />
     <ClInclude Include="inc\DCMotorAssembly.hpp" />
+    <ClInclude Include="inc\HC_SR04.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
