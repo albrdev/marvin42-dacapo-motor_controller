@@ -10,14 +10,38 @@ private:
     static Adafruit_MotorShield s_Shield; /*!< TODO */
     static bool s_ShieldInitialized; /*!< TODO */
 
-    const static size_t k_DeviceCount = 4U; /*!< TODO */
-    Adafruit_DCMotor* m_Devices[k_DeviceCount]; /*!< TODO */
+    static const size_t k_DeviceCount = 4U; /*!< TODO */
+    struct
+    {
+        Adafruit_DCMotor* device;
+        float power;
+    } m_Devices[k_DeviceCount] =
+    {
+        { nullptr, 0.0f },
+        { nullptr, 0.0f },
+        { nullptr, 0.0f },
+        { nullptr, 0.0f }
+    }; /*!< TODO */
 
-    const static size_t k_VectorLength = 3U; /*!< TODO */
-    const static size_t k_DirectionCount = k_VectorLength * k_VectorLength; /*!< TODO */
+    static const size_t k_VectorLength = 3U; /*!< TODO */
+    static const size_t k_DirectionCount = k_VectorLength * k_VectorLength; /*!< TODO */
     static const float k_DirectionMap[k_VectorLength][k_VectorLength][k_DeviceCount]; /*!< TODO */
 
 public:
+    /*! IsRunning().
+    \fn IsRunning().
+    \param .
+    \return .
+    */
+    bool IsRunning(void) const;
+
+    /*! IsRunning().
+    \fn IsRunning().
+    \param .
+    \return .
+    */
+    bool IsRunning(const size_t port) const;
+
     /*! Run().
     \fn Run().
     \param .
