@@ -1,6 +1,7 @@
 #include <stdint.h>
 #include <stdarg.h>
 #include "DCMotorAssembly.hpp"
+#include "Component.hpp"
 #include "HC_SR04.hpp"
 #include "Button.hpp"
 #include "crc.h"
@@ -10,8 +11,8 @@
 
 DCMotorAssembly motors;
 
-#define BRAKE_THRESHOLD 50.0f   // cm
-HC_SR04 sonicSensor(2, 3);
+#define BRAKE_THRESHOLD 15.0f   // cm
+HC_SR04 sonicSensor(22, 23);
 float distance = 0.0f;
 
 Button debugButton(13);
@@ -19,7 +20,8 @@ Button debugButton(13);
 #define D4 4
 #define D7 7
 
-#define CommandSerial Serial1
+#define CommandSerial   Serial1
+#define LOOP_DELAY      10UL
 
 void SetStatus(const bool status)
 {
@@ -69,6 +71,11 @@ void toggleDebug(const bool state)
     delay(350);
 }
 
+bool obstacleNear(void)
+{
+    return distance >= 0.0f && distance <= BRAKE_THRESHOLD;
+}
+
 void OnPacketReceived(const packet_header_t* const hdr)
 {
     switch(hdr->type)
@@ -84,11 +91,11 @@ void OnPacketReceived(const packet_header_t* const hdr)
             PrintDebugBla("CPT_MOTORBALANCE: left="); PrintDebugBla(left); PrintDebugBla(", right="); PrintDebugBla(right);
             PrintDebugBlaLine();
 
-            /*if(inputdata.movement.direction.y > 0.0f && distance <= BRAKE_THRESHOLD)
+            if(inputdata.movement.direction.y > 0.0f && obstacleNear())
             {
-                PrintDebugBla("Halt");
+                Serial.println("Obstructed");
                 break;
-            }*/
+            }
 
             motors.SetLeftSpeed(left);
             motors.SetRightSpeed(right);
@@ -105,11 +112,11 @@ void OnPacketReceived(const packet_header_t* const hdr)
 
             motors.Run(inputdata.movement.direction.x, inputdata.movement.direction.y, inputdata.movement.power);
 
-            /*if(inputdata.movement.direction.y > 0.0f && distance <= BRAKE_THRESHOLD)
+            if(inputdata.movement.direction.y > 0.0f && obstacleNear())
             {
-                PrintDebugBla("Halt");
+                Serial.println("Obstructed");
                 break;
-            }*/
+            }
 
             break;
         }
@@ -121,11 +128,11 @@ void OnPacketReceived(const packet_header_t* const hdr)
             PrintDebugBla("CPT_MOTORPOWER: power="); PrintDebugBla(inputdata.movement.power);
             PrintDebugBlaLine();
 
-            /*if(inputdata.movement.direction.y > 0.0f && distance <= BRAKE_THRESHOLD)
+            if(inputdata.movement.direction.y > 0.0f && obstacleNear())
             {
-                PrintDebugBla("Halt");
+                Serial.println("Obstructed");
                 break;
-            }*/
+            }
 
             motors.Run(inputdata.movement.direction.x, inputdata.movement.direction.y, inputdata.movement.power);
 
@@ -154,11 +161,11 @@ void OnPacketReceived(const packet_header_t* const hdr)
             PrintDebugBla(", power="); PrintDebugBla(inputdata.movement.power);
             PrintDebugBlaLine();
 
-            /*if(inputdata.movement.direction.y > 0.0f && distance <= BRAKE_THRESHOLD)
+            if(inputdata.movement.direction.y > 0.0f && obstacleNear())
             {
-                PrintDebugBla("Halt");
+                Serial.println("Obstructed");
                 break;
-            }*/
+            }
 
             motors.Run(inputdata.movement.direction.x, inputdata.movement.direction.y, inputdata.movement.power);
 
@@ -326,11 +333,13 @@ void loop(void)
 {
     debugButton.Poll();
 
-    /*distance = sonicSensor.GetDistance();
-    if(distance != -1.0f && distance <= BRAKE_THRESHOLD)
+    distance = sonicSensor.GetDistance();
+    if(obstacleNear())
     {
+        Serial.println("Halt");
         motors.Halt();
-    }*/
+    }
 
     handle_data();
+    delay(LOOP_DELAY);
 }
