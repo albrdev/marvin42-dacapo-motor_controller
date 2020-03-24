@@ -41,7 +41,7 @@ struct
         int8_t direction;
         float power;
     } rotation;
-} inputdata = { { { 0.0f, 0.0f }, 0.0f}, { 0, 0.0f } };
+} inputdata = { { { 0.0f, 0.0f }, 1.0f}, { 0, 0.0f } };
 
 uint8_t readBuffer[64];
 size_t readOffset = 0U;
@@ -78,11 +78,15 @@ bool obstacleNear(void)
     return distance >= 0.0f && distance <= BRAKE_THRESHOLD;
 }
 
+bool movingForwards(void)
+{
+    return inputdata.movement.direction.y > 0.0f && inputdata.movement.power > 0.0f;
+}
+
 void Halt(void)
 {
     inputdata.movement.direction = { 0.0f, 0.0f };
     inputdata.rotation.direction = 0;
-
     motors.Halt();
 }
 
@@ -101,12 +105,6 @@ void OnPacketReceived(const packet_header_t* const hdr)
             PrintDebugBla("CPT_MOTORBALANCE: left="); PrintDebugBla(left); PrintDebugBla(", right="); PrintDebugBla(right);
             PrintDebugBlaLine();
 
-            if(inputdata.movement.direction.y > 0.0f && obstacleNear())
-            {
-                Serial.println("Obstructed");
-                break;
-            }
-
             motors.SetLeftSpeed(left);
             motors.SetRightSpeed(right);
             break;
@@ -119,9 +117,12 @@ void OnPacketReceived(const packet_header_t* const hdr)
             PrintDebugBla("CPT_DIRECTION: direction="); PrintDebugBla("(x="); PrintDebugBla(inputdata.movement.direction.x); PrintDebugBla(", y="); PrintDebugBla(inputdata.movement.direction.y); PrintDebugBla(")");
             PrintDebugBlaLine();
 
-            if(inputdata.movement.direction.y > 0.0f && obstacleNear())
+            if(obstacleNear() && movingForwards())
             {
-                Serial.println("Obstructed");
+                PrintDebugBla("Ignored: Obstruction");
+                PrintDebugBlaLine();
+
+                Halt();
                 break;
             }
 
@@ -136,9 +137,12 @@ void OnPacketReceived(const packet_header_t* const hdr)
             PrintDebugBla("CPT_MOTORPOWER: power="); PrintDebugBla(inputdata.movement.power);
             PrintDebugBlaLine();
 
-            if(inputdata.movement.direction.y > 0.0f && obstacleNear())
+            if(obstacleNear() && movingForwards())
             {
-                Serial.println("Obstructed");
+                PrintDebugBla("Ignored: Obstruction");
+                PrintDebugBlaLine();
+
+                Halt();
                 break;
             }
 
@@ -167,9 +171,12 @@ void OnPacketReceived(const packet_header_t* const hdr)
             PrintDebugBla(", power="); PrintDebugBla(inputdata.movement.power);
             PrintDebugBlaLine();
 
-            if(inputdata.movement.direction.y > 0.0f && obstacleNear())
+            if(obstacleNear() && movingForwards())
             {
-                Serial.println("Obstructed");
+                PrintDebugBla("Ignored: Obstruction");
+                PrintDebugBlaLine();
+
+                Halt();
                 break;
             }
 
@@ -347,9 +354,10 @@ void loop(void)
     debugButton.Poll();
 
     distance = sonicSensor.GetDistance();
-    if(obstacleNear())
+    if(obstacleNear() && movingForwards())
     {
-        Serial.println("Halt");
+        PrintDebugBla("Halt: Obstruction");
+        PrintDebugBlaLine();
         motors.Halt();
     }
 
@@ -358,7 +366,7 @@ void loop(void)
         Halt();
         nextAutoHalt = millis() + KA_INTERVAL;
 
-        PrintDebugBla("Auto halt");
+        PrintDebugBla("Halt: Timeout");
         PrintDebugBlaLine();
     }
 
