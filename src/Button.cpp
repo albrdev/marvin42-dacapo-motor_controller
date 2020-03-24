@@ -3,7 +3,7 @@
 
 bool Button::GetState(void) const
 {
-    return digitalRead(m_Pin);
+    return digitalRead(m_Pins[0]);
 }
 
 void Button::SetOnStateChangedEvent(const OnStateChangedEventHandler value)
@@ -13,7 +13,7 @@ void Button::SetOnStateChangedEvent(const OnStateChangedEventHandler value)
 
 void Button::Poll(void)
 {
-    bool state = digitalRead(m_Pin);
+    bool state = digitalRead(m_Pins[0]);
     if(state != m_State)
     {
         m_State = state;
@@ -24,8 +24,8 @@ void Button::Poll(void)
     }
 }
 
-Button::Button(const uint8_t pin) : m_Pin(pin)
+Button::Button(const uint8_t pin) : Component<1>(pin)
 {
-    pinMode(m_Pin, INPUT_PULLUP);
-    m_State = digitalRead(m_Pin);
+    pinMode(m_Pins[0], INPUT_PULLUP);
+    m_State = digitalRead(m_Pins[0]);
 }

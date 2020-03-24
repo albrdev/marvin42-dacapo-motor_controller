@@ -2,8 +2,9 @@
 #define __BUTTON_HPP__
 
 #include <stdint.h> /* uint8_t */
+#include "Component.hpp"
 
-class Button
+class Button : private Component<1>
 {
 public:
     /*! OnStateChangedEventHandler().
@@ -14,7 +15,6 @@ public:
     typedef void(*OnStateChangedEventHandler)(const bool);
 
 private:
-    uint8_t m_Pin;
     bool m_State;
 
     OnStateChangedEventHandler m_OnStateChangedEvent = nullptr;
