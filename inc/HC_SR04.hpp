@@ -9,7 +9,7 @@ class HC_SR04 : private Component<2>
 protected:
     static constexpr float SPEED_OF_SOUND = 343.0f * (100.0f / 1000000.0f); // cm/us
 
-    bool AwaitPulse(const uint8_t value, const unsigned long int timeout, unsigned long int &result) const;
+    bool AwaitPulse(const uint8_t value, const unsigned long int timeout, unsigned long int& result) const;
 
 public:
     static constexpr float DISTANCE_MAX = 400.0f; // cm
