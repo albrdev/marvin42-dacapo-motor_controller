@@ -62,14 +62,8 @@ void toggleDebug(const bool state)
     if(!state)
         return;
 
-    if(debug)
-        PrintDebugLine2("DEBUG: OFF");
-
     debug = !debug;
-
-    if(debug)
-        PrintDebugLine2("DEBUG: ON");
-
+    Serial.println(debug ? "DEBUG: ON" : "DEBUG: OFF");
     delay(350);
 }
 
