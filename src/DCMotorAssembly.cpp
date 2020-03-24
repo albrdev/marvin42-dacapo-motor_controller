@@ -29,8 +29,32 @@ const float DCMotorAssembly::k_DirectionMap[k_VectorLength][k_VectorLength][k_De
 Adafruit_MotorShield DCMotorAssembly::s_Shield(0x61);
 bool DCMotorAssembly::s_ShieldInitialized = false;
 
+bool DCMotorAssembly::IsRunning(void) const
+{
+    for(size_t i = 0U; i < DCMotorAssembly::k_DeviceCount; i++)
+    {
+        if(IsRunning())
+        {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+bool DCMotorAssembly::IsRunning(const size_t port) const
+{
+    return m_Devices[port].power != 0.0f;
+}
+
 void DCMotorAssembly::Run(const float directionX, const float directionY, float power)
 {
+    if(power == 0.0f || (directionX == 0.0f && directionY == 0.0f))
+    {
+        Halt();
+        return;
+    }
+
     const float maxIndex = DCMotorAssembly::k_VectorLength - 1U;
     size_t x = (size_t)denormalize11(clamp11((float)roundf(directionX)), 0.0f, maxIndex);
     size_t y = (size_t)denormalize11(clamp11((float)roundf(directionY)), 0.0f, maxIndex);
@@ -44,17 +68,20 @@ void DCMotorAssembly::Run(const float directionX, const float directionY, float 
 
 void DCMotorAssembly::SetSpeed(const float value)
 {
-    uint8_t speed = denormalize01(fabs(value), 0, 255);
-    uint8_t direction = value < 0.0f ? BACKWARD : FORWARD;
     if(value == 0.0f)
     {
         Halt();
+        return;
     }
+
+    uint8_t speed = denormalize01(fabs(value), 0, 255);
+    uint8_t direction = value < 0.0f ? BACKWARD : FORWARD;
 
     for(size_t i = 0U; i < DCMotorAssembly::k_DeviceCount; i++)
     {
-        m_Devices[i]->setSpeed(speed);
-        m_Devices[i]->run(direction);
+        m_Devices[i].device->setSpeed(speed);
+        m_Devices[i].device->run(direction);
+        m_Devices[i].power = value;
     }
 }
 
@@ -63,10 +90,12 @@ void DCMotorAssembly::SetSpeed(const size_t port, const float value)
     if(value == 0.0f)
     {
         Halt(port);
+        return;
     }
 
-    m_Devices[port]->setSpeed(denormalize01(fabsf(value), 0, 255));
-    m_Devices[port]->run(value < 0.0f ? BACKWARD : FORWARD);
+    m_Devices[port].device->setSpeed(denormalize01(fabsf(value), 0, 255));
+    m_Devices[port].device->run(value < 0.0f ? BACKWARD : FORWARD);
+    m_Devices[port].power = value;
 }
 
 void DCMotorAssembly::SetLeftSpeed(const float value)
@@ -127,8 +156,14 @@ void DCMotorAssembly::Halt(void)
 
 void DCMotorAssembly::Halt(const size_t port)
 {
-    m_Devices[port]->setSpeed(0);
-    //m_Devices[port]->run(RELEASE);
+    if(!IsRunning(port))
+    {
+        return;
+    }
+
+    m_Devices[port].device->setSpeed(0);
+    //m_Devices[port].device->run(RELEASE);
+    m_Devices[port].power = 0.0f;
 }
 
 void DCMotorAssembly::Begin(void)
@@ -141,14 +176,13 @@ void DCMotorAssembly::Begin(void)
 
     for(uint8_t i = 0U; i < DCMotorAssembly::k_DeviceCount; i++)
     {
-        m_Devices[i] = s_Shield.getMotor(i + 1U);
+        m_Devices[i].device = s_Shield.getMotor(i + 1U);
     }
 }
 
-DCMotorAssembly::DCMotorAssembly(void)
-{
-}
+DCMotorAssembly::DCMotorAssembly(void) { }
 
 DCMotorAssembly::~DCMotorAssembly(void)
 {
+    //Halt();
 }

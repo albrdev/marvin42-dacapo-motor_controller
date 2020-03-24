@@ -1,7 +1,6 @@
 #include <stdint.h>
 #include <stdarg.h>
 #include "DCMotorAssembly.hpp"
-#include "Component.hpp"
 #include "HC_SR04.hpp"
 #include "Button.hpp"
 #include "crc.h"
@@ -51,6 +50,9 @@ size_t readOffset = 0U;
 size_t packetSuccessCount = 0U;
 size_t packetFailCount = 0U;
 
+#define KA_INTERVAL 1000UL
+unsigned long int nextAutoHalt = 0UL;
+
 bool debug = false;
 #define PrintDebugBla(msg) if(debug) { PrintDebug(msg); }
 #define PrintDebugBlaLine(msg) if(debug) { PrintDebugLine(msg); }
@@ -76,6 +78,14 @@ bool obstacleNear(void)
     return distance >= 0.0f && distance <= BRAKE_THRESHOLD;
 }
 
+void Halt(void)
+{
+    inputdata.movement.direction = { 0.0f, 0.0f };
+    inputdata.rotation.direction = 0;
+
+    motors.Halt();
+}
+
 void OnPacketReceived(const packet_header_t* const hdr)
 {
     switch(hdr->type)
@@ -99,7 +109,6 @@ void OnPacketReceived(const packet_header_t* const hdr)
 
             motors.SetLeftSpeed(left);
             motors.SetRightSpeed(right);
-
             break;
         }
         case CPT_DIRECTION:
@@ -110,14 +119,13 @@ void OnPacketReceived(const packet_header_t* const hdr)
             PrintDebugBla("CPT_DIRECTION: direction="); PrintDebugBla("(x="); PrintDebugBla(inputdata.movement.direction.x); PrintDebugBla(", y="); PrintDebugBla(inputdata.movement.direction.y); PrintDebugBla(")");
             PrintDebugBlaLine();
 
-            motors.Run(inputdata.movement.direction.x, inputdata.movement.direction.y, inputdata.movement.power);
-
             if(inputdata.movement.direction.y > 0.0f && obstacleNear())
             {
                 Serial.println("Obstructed");
                 break;
             }
 
+            motors.Run(inputdata.movement.direction.x, inputdata.movement.direction.y, inputdata.movement.power);
             break;
         }
         case CPT_MOTORPOWER:
@@ -135,7 +143,6 @@ void OnPacketReceived(const packet_header_t* const hdr)
             }
 
             motors.Run(inputdata.movement.direction.x, inputdata.movement.direction.y, inputdata.movement.power);
-
             break;
         }
         case CPT_MOTORROTATION:
@@ -148,7 +155,6 @@ void OnPacketReceived(const packet_header_t* const hdr)
             PrintDebugBlaLine();
 
             motors.Rotate(-inputdata.rotation.direction, inputdata.rotation.power);
-
             break;
         }
         case CPT_MOTORRUN:
@@ -168,7 +174,6 @@ void OnPacketReceived(const packet_header_t* const hdr)
             }
 
             motors.Run(inputdata.movement.direction.x, inputdata.movement.direction.y, inputdata.movement.power);
-
             break;
         }
         case CPT_MOTORSTOP:
@@ -180,6 +185,12 @@ void OnPacketReceived(const packet_header_t* const hdr)
             PrintDebugBlaLine();
 
             motors.Halt();
+            break;
+        }
+        case PT_SYN:
+        {
+            PrintDebugBla("PT_SYN");
+            PrintDebugBlaLine();
 
             break;
         }
@@ -191,6 +202,8 @@ void OnPacketReceived(const packet_header_t* const hdr)
             break;
         }
     }
+
+    nextAutoHalt = millis() + KA_INTERVAL;
 }
 
 bool handle_packet(const uint8_t* const offset, const uint8_t* const end, size_t* const incrementSize)
@@ -338,6 +351,15 @@ void loop(void)
     {
         Serial.println("Halt");
         motors.Halt();
+    }
+
+    if((long)(millis() - nextAutoHalt) >= 0L)
+    {
+        Halt();
+        nextAutoHalt = millis() + KA_INTERVAL;
+
+        PrintDebugBla("Auto halt");
+        PrintDebugBlaLine();
     }
 
     handle_data();
