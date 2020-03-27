@@ -142,16 +142,7 @@ void OnPacketReceived(const packet_header_t* const hdr)
             PrintDebug2("direction="); PrintDebug2("(x="); PrintDebug2(inputdata.movement.direction.x); PrintDebug2(", y="); PrintDebug2(inputdata.movement.direction.y); PrintDebug2(")");
             PrintDebugLine2();
 
-            if(obstacleNear() && movingForwards())
-            {
-                PrintDebug2("Ignored: Obstruction");
-                PrintDebugLine2();
-
-                Halt();
-                break;
-            }
-
-            motors.Run(inputdata.movement.direction.x, inputdata.movement.direction.y, inputdata.movement.power);
+            Run();
             break;
         }
         case CPT_DIRQUAT:
