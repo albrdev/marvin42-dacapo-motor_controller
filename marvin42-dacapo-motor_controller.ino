@@ -1,5 +1,7 @@
 #include <stdint.h>
 #include <stdarg.h>
+#include "I2Cdev.h"
+#include "MPU6050_6Axis_MotionApps20.h"
 #include "DCMotorAssembly.hpp"
 #include "HC_SR04.hpp"
 #include "Button.hpp"
@@ -41,7 +43,9 @@ struct
         int8_t direction;
         float power;
     } rotation;
-} inputdata = { { { 0.0f, 0.0f }, 1.0f}, { 0, 0.0f } };
+
+    Quaternion joystickRotation;
+} inputdata = { { { 0.0f, 0.0f }, 1.0f}, { 0, 0.0f }, Quaternion() };
 
 uint8_t readBuffer[64];
 size_t readOffset = 0U;
@@ -65,6 +69,17 @@ void toggleDebug(const bool state)
     debug = !debug;
     Serial.println(debug ? "DEBUG: ON" : "DEBUG: OFF");
     delay(350);
+}
+
+void calcDirection(const vector2data_t& direction, Quaternion& remoteRotation, Quaternion& localRotation)
+{
+    Quaternion q = remoteRotation.getProduct(localRotation.getConjugate()); // q1 * inverse(q2) == q1 / q2
+    VectorFloat tmp(direction.x, direction.y, 0.0f); // Rotate by direction
+    tmp.rotate(&q);
+    tmp.normalize();
+
+    vector2data_t result = { tmp.x, tmp.y };
+    //VectorFloat localDirection = q.getProduct(direction).getNormalized();
 }
 
 bool obstacleNear(void)
@@ -96,7 +111,8 @@ void OnPacketReceived(const packet_header_t* const hdr)
             memcpy(&left, &pkt->left, sizeof(pkt->left));
             memcpy(&right, &pkt->right, sizeof(pkt->right));
 
-            PrintDebug2("CPT_MOTORBALANCE: left="); PrintDebug2(left); PrintDebug2(", right="); PrintDebug2(right);
+            PrintDebug2("CPT_MOTORBALANCE: ");
+            PrintDebug2("left="); PrintDebug2(left); PrintDebug2(", right="); PrintDebug2(right);
             PrintDebugLine2();
 
             motors.SetLeftSpeed(left);
@@ -108,7 +124,31 @@ void OnPacketReceived(const packet_header_t* const hdr)
             const packet_direction_t* pkt = (const packet_direction_t*)hdr;
             memcpy(&inputdata.movement.direction, &pkt->direction, sizeof(pkt->direction));
 
-            PrintDebug2("CPT_DIRECTION: direction="); PrintDebug2("(x="); PrintDebug2(inputdata.movement.direction.x); PrintDebug2(", y="); PrintDebug2(inputdata.movement.direction.y); PrintDebug2(")");
+            PrintDebug2("CPT_DIRECTION: ");
+            PrintDebug2("direction="); PrintDebug2("(x="); PrintDebug2(inputdata.movement.direction.x); PrintDebug2(", y="); PrintDebug2(inputdata.movement.direction.y); PrintDebug2(")");
+            PrintDebugLine2();
+
+            if(obstacleNear() && movingForwards())
+            {
+                PrintDebug2("Ignored: Obstruction");
+                PrintDebugLine2();
+
+                Halt();
+                break;
+            }
+
+            motors.Run(inputdata.movement.direction.x, inputdata.movement.direction.y, inputdata.movement.power);
+            break;
+        }
+        case CPT_DIRQUAT:
+        {
+            const packet_dirquat_t* pkt = (const packet_dirquat_t*)hdr;
+            memcpy(&inputdata.movement.direction, &pkt->direction, sizeof(pkt->direction));
+            inputdata.joystickRotation = Quaternion(pkt->rotation.w, pkt->rotation.x, pkt->rotation.y, pkt->rotation.z);
+
+            PrintDebug2("CPT_DIRQUAT: ");
+            PrintDebug2("direction="); PrintDebug2("(x="); PrintDebug2(inputdata.movement.direction.x); PrintDebug2(", y="); PrintDebug2(inputdata.movement.direction.y); PrintDebug2("), ");
+            PrintDebug2("rotation="); PrintDebug2("(w="); PrintDebug2(inputdata.joystickRotation.w); PrintDebug2(", x="); PrintDebug2(inputdata.joystickRotation.x); PrintDebug2(", y="); PrintDebug2(inputdata.joystickRotation.y); PrintDebug2(", z="); PrintDebug2(inputdata.joystickRotation.z); PrintDebug2(")");
             PrintDebugLine2();
 
             if(obstacleNear() && movingForwards())
@@ -128,7 +168,8 @@ void OnPacketReceived(const packet_header_t* const hdr)
             const packet_motorpower_t* pkt = (const packet_motorpower_t*)hdr;
             memcpy(&inputdata.movement.power, &pkt->power, sizeof(pkt->power));
 
-            PrintDebug2("CPT_MOTORPOWER: power="); PrintDebug2(inputdata.movement.power);
+            PrintDebug2("CPT_MOTORPOWER: ");
+            PrintDebug2("power="); PrintDebug2(inputdata.movement.power);
             PrintDebugLine2();
 
             if(obstacleNear() && movingForwards())
@@ -149,7 +190,8 @@ void OnPacketReceived(const packet_header_t* const hdr)
             memcpy(&inputdata.rotation.direction, &pkt->direction, sizeof(pkt->direction));
             memcpy(&inputdata.rotation.power, &pkt->power, sizeof(pkt->power));
 
-            PrintDebug2("CPT_MOTORROTATION: direction="); PrintDebug2(inputdata.rotation.direction); PrintDebug2(", power="); PrintDebug2(inputdata.rotation.power);
+            PrintDebug2("CPT_MOTORROTATION: ");
+            PrintDebug2("direction="); PrintDebug2(inputdata.rotation.direction); PrintDebug2(", power="); PrintDebug2(inputdata.rotation.power);
             PrintDebugLine2();
 
             motors.Rotate(-inputdata.rotation.direction, inputdata.rotation.power);
@@ -161,7 +203,8 @@ void OnPacketReceived(const packet_header_t* const hdr)
             memcpy(&inputdata.movement.direction, &pkt->direction, sizeof(pkt->direction));
             memcpy(&inputdata.movement.power, &pkt->power, sizeof(pkt->power));
 
-            PrintDebug2("CPT_MOTORRUN: direction="); PrintDebug2("(x="); PrintDebug2(inputdata.movement.direction.x); PrintDebug2(", y="); PrintDebug2(inputdata.movement.direction.y); PrintDebug2(")");
+            PrintDebug2("CPT_MOTORRUN: ");
+            PrintDebug2("direction="); PrintDebug2("(x="); PrintDebug2(inputdata.movement.direction.x); PrintDebug2(", y="); PrintDebug2(inputdata.movement.direction.y); PrintDebug2(")");
             PrintDebug2(", power="); PrintDebug2(inputdata.movement.power);
             PrintDebugLine2();
 
