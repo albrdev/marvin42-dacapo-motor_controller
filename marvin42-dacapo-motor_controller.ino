@@ -42,10 +42,11 @@ struct
     {
         int8_t direction;
         float power;
-    } rotation;
+    } spin;
 
+    Quaternion rotation;
     Quaternion joystickRotation;
-} inputdata = { { { 0.0f, 0.0f }, 1.0f}, { 0, 0.0f }, Quaternion() };
+} inputdata = { { { 0.0f, 0.0f }, 1.0f}, { 0, 0.0f }, Quaternion(), Quaternion() };
 
 uint8_t readBuffer[64];
 size_t readOffset = 0U;
@@ -71,15 +72,15 @@ void toggleDebug(const bool state)
     delay(350);
 }
 
-void calcDirection(const vector2data_t& direction, Quaternion& remoteRotation, Quaternion& localRotation)
+vector2data_t calcDirection(const vector2data_t& direction, Quaternion& remoteRotation, Quaternion& localRotation)
 {
+    VectorFloat tmpDir(direction.x, direction.y, 0.0f);
     Quaternion q = remoteRotation.getProduct(localRotation.getConjugate()); // q1 * inverse(q2) == q1 / q2
-    VectorFloat tmp(direction.x, direction.y, 0.0f); // Rotate by direction
-    tmp.rotate(&q);
-    tmp.normalize();
 
-    vector2data_t result = { tmp.x, tmp.y };
-    //VectorFloat localDirection = q.getProduct(direction).getNormalized();
+    VectorFloat globalDir = tmpDir.getRotated(&remoteRotation).getNormalized();
+    VectorFloat localDir = tmpDir.getRotated(&q).getNormalized();
+
+    return { localDir.x, localDir.y };
 }
 
 bool obstacleNear(void)
@@ -95,7 +96,7 @@ bool movingForwards(void)
 void Halt(void)
 {
     inputdata.movement.direction = { 0.0f, 0.0f };
-    inputdata.rotation.direction = 0;
+    inputdata.spin.direction = 0;
     motors.Halt();
 }
 
@@ -171,17 +172,17 @@ void OnPacketReceived(const packet_header_t* const hdr)
             Run();
             break;
         }
-        case CPT_MOTORROTATION:
+        case CPT_MOTORSPIN:
         {
-            const packet_motorrotation_t* pkt = (const packet_motorrotation_t*)hdr;
-            memcpy(&inputdata.rotation.direction, &pkt->direction, sizeof(pkt->direction));
-            memcpy(&inputdata.rotation.power, &pkt->power, sizeof(pkt->power));
+            const packet_motorspin_t* pkt = (const packet_motorspin_t*)hdr;
+            memcpy(&inputdata.spin.direction, &pkt->direction, sizeof(pkt->direction));
+            memcpy(&inputdata.spin.power, &pkt->power, sizeof(pkt->power));
 
-            PrintDebug2("CPT_MOTORROTATION: ");
-            PrintDebug2("direction="); PrintDebug2(inputdata.rotation.direction); PrintDebug2(", power="); PrintDebug2(inputdata.rotation.power);
+            PrintDebug2("CPT_MOTORSPIN: ");
+            PrintDebug2("direction="); PrintDebug2(inputdata.spin.direction); PrintDebug2(", power="); PrintDebug2(inputdata.spin.power);
             PrintDebugLine2();
 
-            motors.Rotate(-inputdata.rotation.direction, inputdata.rotation.power);
+            motors.Rotate(-inputdata.spin.direction, inputdata.spin.power);
             break;
         }
         case CPT_MOTORRUN:
@@ -337,6 +338,80 @@ void handle_data(void)
     PrintDebugLine2(); PrintDebugLine2();
 }
 
+#define MPU6060_INT_PIN 2
+MPU6050 mpu;
+bool dmpReady = false;  // set true if DMP init was successful
+uint8_t mpuIntStatus;   // holds actual interrupt status byte from MPU
+uint8_t devStatus;      // return status after each device operation (0 = success, !0 = error)
+uint16_t packetSize;    // expected DMP packet size (default is 42 bytes)
+uint16_t fifoCount;     // count of all bytes currently in FIFO
+uint8_t fifoBuffer[64]; // FIFO storage buffer
+
+volatile bool mpuInterrupt = false; // indicates whether MPU interrupt pin has gone high
+void dmpDataReady()
+{
+    mpuInterrupt = true;
+}
+
+void setupMPU6050(void)
+{
+    Wire.begin();
+    Wire.setClock(400000); // 400kHz I2C clock. Comment this line if having compilation difficulties
+
+    // initialize device
+    Serial.println("MPU6050...");
+    mpu.initialize();
+    pinMode(MPU6060_INT_PIN, INPUT);
+
+    if(!mpu.testConnection())
+    {
+        Serial.println("Failed");
+        while(true);
+    }
+
+    // supply your own gyro offsets here, scaled for min sensitivity
+    mpu.setXGyroOffset(220);
+    mpu.setYGyroOffset(76);
+    mpu.setZGyroOffset(-85);
+    mpu.setZAccelOffset(1788); // 1688 factory default for my test chip
+
+    // load and configure the DMP
+    devStatus = mpu.dmpInitialize();
+    if(devStatus != 0)
+    {
+        Serial.print("Fail: DMP, "); Serial.println(devStatus);
+        while(true);
+    }
+
+    // Calibration Time: generate offsets and calibrate our MPU6050
+    mpu.CalibrateAccel(6);
+    mpu.CalibrateGyro(6);
+    mpu.PrintActiveOffsets();
+
+    // turn on the DMP, now that it's ready
+    mpu.setDMPEnabled(true);
+
+    // enable Arduino interrupt detection
+    attachInterrupt(digitalPinToInterrupt(MPU6060_INT_PIN), dmpDataReady, RISING);
+    mpuIntStatus = mpu.getIntStatus();
+
+    // set our DMP Ready flag so the main loop() function knows it's okay to use it
+    dmpReady = true;
+
+    // get expected DMP packet size for later comparison
+    packetSize = mpu.dmpGetFIFOPacketSize();
+}
+
+void readDMP(void)
+{
+    if(!dmpReady || mpu.dmpGetCurrentFIFOPacket(fifoBuffer) == 0)
+    {
+        return;
+    }
+
+    mpu.dmpGetQuaternion(&inputdata.rotation, fifoBuffer);
+}
+
 void setup(void)
 {
     delay(2500);
@@ -381,6 +456,8 @@ void loop(void)
         PrintDebug2("Halt: Timeout");
         PrintDebugLine2();
     }
+
+    readDMP();
 
     handle_data();
     delay(LOOP_DELAY);
