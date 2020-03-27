@@ -9,6 +9,7 @@
 #include "packet.h"
 #include "custom_packets.h"
 #include "generic.hpp"
+#include "debug.hpp"
 
 DCMotorAssembly motors;
 
@@ -59,8 +60,8 @@ size_t packetFailCount = 0U;
 unsigned long int nextAutoHalt = 0UL;
 
 bool debug = false;
-#define PrintDebug2(msg)      do { if(debug) { PrintDebug(msg); } } while(false)
-#define PrintDebugLine2(msg)  do { if(debug) { PrintDebugLine(msg); } } while(false)
+#define DebugPrint2(msg)        do { if(debug) { DebugPrint(msg); } } while(false)
+#define DebugPrintLine2(msg)    do { if(debug) { DebugPrintLine(msg); } } while(false)
 
 void toggleDebug(const bool state)
 {
@@ -68,7 +69,7 @@ void toggleDebug(const bool state)
         return;
 
     debug = !debug;
-    Serial.println(debug ? "DEBUG: ON" : "DEBUG: OFF");
+    DebugPrintLine(debug ? "DEBUG: ON" : "DEBUG: OFF");
     delay(350);
 }
 
@@ -104,8 +105,7 @@ void Run(void)
 {
     if(obstacleNear() && movingForwards())
     {
-        PrintDebug2("Ignored: Obstruction");
-        PrintDebugLine2();
+        DebugPrintLineN(DM_GENERIC, "Ignored: Obstruction");
 
         Halt();
         return;
@@ -126,9 +126,9 @@ void OnPacketReceived(const packet_header_t* const hdr)
             memcpy(&left, &pkt->left, sizeof(pkt->left));
             memcpy(&right, &pkt->right, sizeof(pkt->right));
 
-            PrintDebug2("CPT_MOTORBALANCE: ");
-            PrintDebug2("left="); PrintDebug2(left); PrintDebug2(", right="); PrintDebug2(right);
-            PrintDebugLine2();
+            DebugPrintN(DM_NWDATA, "CPT_MOTORBALANCE: ");
+            DebugPrintN(DM_NWDATA, "left="); DebugPrintN(DM_NWDATA, left); DebugPrintN(DM_NWDATA, ", right="); DebugPrintN(DM_NWDATA, right);
+            DebugPrintLineN(DM_NWDATA);
 
             motors.SetLeftSpeed(left);
             motors.SetRightSpeed(right);
@@ -139,9 +139,9 @@ void OnPacketReceived(const packet_header_t* const hdr)
             const packet_direction_t* pkt = (const packet_direction_t*)hdr;
             memcpy(&inputdata.movement.direction, &pkt->direction, sizeof(pkt->direction));
 
-            PrintDebug2("CPT_DIRECTION: ");
-            PrintDebug2("direction="); PrintDebug2("(x="); PrintDebug2(inputdata.movement.direction.x); PrintDebug2(", y="); PrintDebug2(inputdata.movement.direction.y); PrintDebug2(")");
-            PrintDebugLine2();
+            DebugPrintN(DM_NWDATA, "CPT_DIRECTION: ");
+            DebugPrintN(DM_NWDATA, "direction="); DebugPrintN(DM_NWDATA, "(x="); DebugPrintN(DM_NWDATA, inputdata.movement.direction.x); DebugPrintN(DM_NWDATA, ", y="); DebugPrintN(DM_NWDATA, inputdata.movement.direction.y); DebugPrintN(DM_NWDATA, ")");
+            DebugPrintLineN(DM_NWDATA);
 
             Run();
             break;
@@ -152,10 +152,10 @@ void OnPacketReceived(const packet_header_t* const hdr)
             memcpy(&inputdata.movement.direction, &pkt->direction, sizeof(pkt->direction));
             inputdata.joystickRotation = Quaternion(pkt->rotation.w, pkt->rotation.x, pkt->rotation.y, pkt->rotation.z);
 
-            PrintDebug2("CPT_DIRQUAT: ");
-            PrintDebug2("direction="); PrintDebug2("(x="); PrintDebug2(inputdata.movement.direction.x); PrintDebug2(", y="); PrintDebug2(inputdata.movement.direction.y); PrintDebug2("), ");
-            PrintDebug2("rotation="); PrintDebug2("(w="); PrintDebug2(inputdata.joystickRotation.w); PrintDebug2(", x="); PrintDebug2(inputdata.joystickRotation.x); PrintDebug2(", y="); PrintDebug2(inputdata.joystickRotation.y); PrintDebug2(", z="); PrintDebug2(inputdata.joystickRotation.z); PrintDebug2(")");
-            PrintDebugLine2();
+            DebugPrintN(DM_NWDATA, "CPT_DIRQUAT: ");
+            DebugPrintN(DM_NWDATA, "direction="); DebugPrintN(DM_NWDATA, "(x="); DebugPrintN(DM_NWDATA, inputdata.movement.direction.x); DebugPrintN(DM_NWDATA, ", y="); DebugPrintN(DM_NWDATA, inputdata.movement.direction.y); DebugPrintN(DM_NWDATA, "), ");
+            DebugPrintN(DM_NWDATA, "rotation="); DebugPrintN(DM_NWDATA, "(w="); DebugPrintN(DM_NWDATA, inputdata.joystickRotation.w); DebugPrintN(DM_NWDATA, ", x="); DebugPrintN(DM_NWDATA, inputdata.joystickRotation.x); DebugPrintN(DM_NWDATA, ", y="); DebugPrintN(DM_NWDATA, inputdata.joystickRotation.y); DebugPrintN(DM_NWDATA, ", z="); DebugPrintN(DM_NWDATA, inputdata.joystickRotation.z); DebugPrintN(DM_NWDATA, ")");
+            DebugPrintLineN(DM_NWDATA);
 
             Run();
             break;
@@ -165,9 +165,9 @@ void OnPacketReceived(const packet_header_t* const hdr)
             const packet_motorpower_t* pkt = (const packet_motorpower_t*)hdr;
             memcpy(&inputdata.movement.power, &pkt->power, sizeof(pkt->power));
 
-            PrintDebug2("CPT_MOTORPOWER: ");
-            PrintDebug2("power="); PrintDebug2(inputdata.movement.power);
-            PrintDebugLine2();
+            DebugPrintN(DM_NWDATA, "CPT_MOTORPOWER: ");
+            DebugPrintN(DM_NWDATA, "power="); DebugPrintN(DM_NWDATA, inputdata.movement.power);
+            DebugPrintLineN(DM_NWDATA);
 
             Run();
             break;
@@ -178,9 +178,9 @@ void OnPacketReceived(const packet_header_t* const hdr)
             memcpy(&inputdata.spin.direction, &pkt->direction, sizeof(pkt->direction));
             memcpy(&inputdata.spin.power, &pkt->power, sizeof(pkt->power));
 
-            PrintDebug2("CPT_MOTORSPIN: ");
-            PrintDebug2("direction="); PrintDebug2(inputdata.spin.direction); PrintDebug2(", power="); PrintDebug2(inputdata.spin.power);
-            PrintDebugLine2();
+            DebugPrintN(DM_NWDATA, "CPT_MOTORSPIN: ");
+            DebugPrintN(DM_NWDATA, "direction="); DebugPrintN(DM_NWDATA, inputdata.spin.direction); DebugPrintN(DM_NWDATA, ", power="); DebugPrintN(DM_NWDATA, inputdata.spin.power);
+            DebugPrintLineN(DM_NWDATA);
 
             motors.Rotate(-inputdata.spin.direction, inputdata.spin.power);
             break;
@@ -191,33 +191,33 @@ void OnPacketReceived(const packet_header_t* const hdr)
             memcpy(&inputdata.movement.direction, &pkt->direction, sizeof(pkt->direction));
             memcpy(&inputdata.movement.power, &pkt->power, sizeof(pkt->power));
 
-            PrintDebug2("CPT_MOTORRUN: ");
-            PrintDebug2("direction="); PrintDebug2("(x="); PrintDebug2(inputdata.movement.direction.x); PrintDebug2(", y="); PrintDebug2(inputdata.movement.direction.y); PrintDebug2(")");
-            PrintDebug2(", power="); PrintDebug2(inputdata.movement.power);
-            PrintDebugLine2();
+            DebugPrintN(DM_NWDATA, "CPT_MOTORRUN: ");
+            DebugPrintN(DM_NWDATA, "direction="); DebugPrintN(DM_NWDATA, "(x="); DebugPrintN(DM_NWDATA, inputdata.movement.direction.x); DebugPrintN(DM_NWDATA, ", y="); DebugPrintN(DM_NWDATA, inputdata.movement.direction.y); DebugPrintN(DM_NWDATA, ")");
+            DebugPrintN(DM_NWDATA, ", power="); DebugPrintN(DM_NWDATA, inputdata.movement.power);
+            DebugPrintLineN(DM_NWDATA);
 
             Run();
             break;
         }
         case CPT_MOTORSTOP:
         {
-            PrintDebug2("CPT_MOTORSTOP");
-            PrintDebugLine2();
+            DebugPrintN(DM_NWDATA, "CPT_MOTORSTOP");
+            DebugPrintLineN(DM_NWDATA);
 
             Halt();
             break;
         }
         case PT_SYN:
         {
-            PrintDebug2("PT_SYN");
-            PrintDebugLine2();
+            DebugPrintN(DM_NWDATA, "PT_SYN");
+            DebugPrintLineN(DM_NWDATA);
 
             break;
         }
         default:
         {
-            PrintDebug2("Unknown packet type: "); PrintDebug2(hdr->type);
-            PrintDebugLine2();
+            DebugPrintN(DM_NWDATA, "Unknown packet type: "); DebugPrintN(DM_NWDATA, hdr->type);
+            DebugPrintLineN(DM_NWDATA);
 
             break;
         }
@@ -226,24 +226,22 @@ void OnPacketReceived(const packet_header_t* const hdr)
     nextAutoHalt = millis() + KA_INTERVAL;
 }
 
-bool handle_packet(const uint8_t* const offset, const uint8_t* const end, size_t* const incrementSize)
+bool parsePacket(const uint8_t* const offset, const uint8_t* const end, size_t* const incrementSize)
 {
     const packet_header_t* hdr = (const packet_header_t*)offset;
     *incrementSize = INVALID_SIZE;
 
-    #ifdef M42_DEBUG
     uint16_t chksum = mkcrc16((const uint8_t* const)hdr + sizeof(hdr->chksum_header), sizeof(*hdr) - sizeof(hdr->chksum_header));
-    #endif
-    PrintDebug2("Header: chksum_header="); PrintDebug2(hexstr(&hdr->chksum_header, sizeof(hdr->chksum_header))); PrintDebug2(", chksum_data="); PrintDebug2(hexstr(&hdr->chksum_data, sizeof(hdr->chksum_data)));
-    PrintDebug2(", type="); PrintDebug2(hdr->type); PrintDebug2(", size="); PrintDebug2(hdr->size);
-    PrintDebug2(" (chksum="); PrintDebug2(hexstr(&chksum, sizeof(chksum))); PrintDebug2(", hex="); PrintDebug2(hexstr(offset, sizeof(*hdr))); PrintDebug2(")");
-    PrintDebugLine2();
+    DebugPrintN(DM_NWPKT, "Header: chksum_header="); DebugPrintN(DM_NWPKT, hexstr(&hdr->chksum_header, sizeof(hdr->chksum_header))); DebugPrintN(DM_NWPKT, ", chksum_data="); DebugPrintN(DM_NWPKT, hexstr(&hdr->chksum_data, sizeof(hdr->chksum_data)));
+    DebugPrintN(DM_NWPKT, ", type="); DebugPrintN(DM_NWPKT, hdr->type); DebugPrintN(DM_NWPKT, ", size="); DebugPrintN(DM_NWPKT, hdr->size);
+    DebugPrintN(DM_NWPKT, " (chksum="); DebugPrintN(DM_NWPKT, hexstr(&chksum, sizeof(chksum))); DebugPrintN(DM_NWPKT, ", hex="); DebugPrintN(DM_NWPKT, hexstr(offset, sizeof(*hdr))); DebugPrintN(DM_NWPKT, ")");
+    DebugPrintLineN(DM_NWPKT);
 
     if(packet_verifyheader(hdr) == 0)
     {
-        PrintDebug2("Header checksum failed: ");
-        PrintDebug2(hexstr(&hdr->chksum_header, sizeof(hdr->chksum_header))); PrintDebug2(", "); PrintDebug2(hexstr(&chksum, sizeof(chksum)));
-        PrintDebugLine2();
+        DebugPrintN(DM_NWPKT, "Header checksum failed: ");
+        DebugPrintN(DM_NWPKT, hexstr(&hdr->chksum_header, sizeof(hdr->chksum_header))); DebugPrintN(DM_NWPKT, ", "); DebugPrintN(DM_NWPKT, hexstr(&chksum, sizeof(chksum)));
+        DebugPrintLineN(DM_NWPKT);
         return false;
     }
 
@@ -253,18 +251,16 @@ bool handle_packet(const uint8_t* const offset, const uint8_t* const end, size_t
         return false;
     }
 
-    #ifdef M42_DEBUG
     chksum = mkcrc16((const uint8_t* const)hdr + sizeof(*hdr), hdr->size);
-    #endif
-    PrintDebug2("Content: chksum_data="); PrintDebug2(hexstr(&hdr->chksum_data, sizeof(hdr->chksum_data))); PrintDebug2(", size="); PrintDebug2(hdr->size);
-    PrintDebug2(" (chksum="); PrintDebug2(hexstr(&chksum, sizeof(chksum))); PrintDebug2(", hex="); PrintDebug2(hexstr((const uint8_t* const)offset + sizeof(*hdr), hdr->size)); PrintDebug2(")");
-    PrintDebugLine2();
+    DebugPrintN(DM_NWPKT, "Content: chksum_data="); DebugPrintN(DM_NWPKT, hexstr(&hdr->chksum_data, sizeof(hdr->chksum_data))); DebugPrintN(DM_NWPKT, ", size="); DebugPrintN(DM_NWPKT, hdr->size);
+    DebugPrintN(DM_NWPKT, " (chksum="); DebugPrintN(DM_NWPKT, hexstr(&chksum, sizeof(chksum))); DebugPrintN(DM_NWPKT, ", hex="); DebugPrintN(DM_NWPKT, hexstr((const uint8_t* const)offset + sizeof(*hdr), hdr->size)); DebugPrintN(DM_NWPKT, ")");
+    DebugPrintLineN(DM_NWPKT);
 
     if(packet_verifydata(hdr) == 0)
     {
-        PrintDebug2("Content checksum failed: ");
-        PrintDebug2(hdr->chksum_data); PrintDebug2(" / "); PrintDebug2(chksum);
-        PrintDebugLine2();
+        DebugPrintN(DM_NWPKT, "Content checksum failed: ");
+        DebugPrintN(DM_NWPKT, hdr->chksum_data); DebugPrintN(DM_NWPKT, " / "); DebugPrintN(DM_NWPKT, chksum);
+        DebugPrintLineN(DM_NWPKT);
         return false;
     }
 
@@ -273,7 +269,7 @@ bool handle_packet(const uint8_t* const offset, const uint8_t* const end, size_t
     return true;
 }
 
-void handle_data(void)
+void recvData(void)
 {
     if(CommandSerial.available() <= 0)
         return;
@@ -283,8 +279,8 @@ void handle_data(void)
         // Should/could only happen if packet received claims it has an abnormally large data size. This could happen if:
         //   * Intentional buffer overflow attack / client uncautiously sending too large data
         //   * The buffer on the server side is smaller than the packet that is currently receiving
-        PrintDebug2("Buffer overflow: offset="); PrintDebug2(readOffset); PrintDebug2(", max="); PrintDebug2(sizeof(readBuffer));
-        PrintDebugLine2();
+        DebugPrintN(DM_NWRECV, "Buffer overflow: offset="); DebugPrintN(DM_NWRECV, readOffset); DebugPrintN(DM_NWRECV, ", max="); DebugPrintN(DM_NWRECV, sizeof(readBuffer));
+        DebugPrintLineN(DM_NWRECV);
         readOffset = 0U; // Ignore this rubbish
     }
 
@@ -294,29 +290,26 @@ void handle_data(void)
     readSize += readOffset;
     readOffset = 0U;
 
-    PrintDebug2("Raw: size="); PrintDebug2(readSize); PrintDebug2(", hex="); PrintDebug2(hexstr(readBuffer, readSize));
-    PrintDebugLine2();
+    DebugPrintN(DM_NWRECV, "Raw: size="); DebugPrintN(DM_NWRECV, readSize); DebugPrintN(DM_NWRECV, ", hex="); DebugPrintN(DM_NWRECV, hexstr(readBuffer, readSize));
+    DebugPrintLineN(DM_NWRECV);
 
-    PrintDebug2("BUFFER BEGIN");
-    PrintDebugLine2();
+    DebugPrintLineN(DM_NWRECV, "[PACKET BEGIN]");
     size_t indexOffset = 0U;
     size_t incrementSize = 0U;
     const uint8_t* const readBufferEnd = &readBuffer[readSize];
     while(indexOffset + sizeof(packet_header_t) <= readSize)
     {
-        if(!handle_packet(readBuffer + indexOffset, readBufferEnd, &incrementSize))
+        if(!parsePacket(readBuffer + indexOffset, readBufferEnd, &incrementSize))
         {
             break;
         }
 
-        PrintDebugLine2();
         indexOffset += incrementSize;
     }
 
     if(incrementSize == INVALID_SIZE)
     {
-        PrintDebug2("BUFFER ERROR");
-        PrintDebugLine2(); PrintDebugLine2();
+        DebugPrintLineN(DM_NWRECV, "[PACKET ERROR]");
         packetFailCount++;
         SetStatus(false);
         return;
@@ -334,8 +327,7 @@ void handle_data(void)
         readBuffer[i] = readBuffer[indexOffset + i];
     }
 
-    PrintDebug2("BUFFER END");
-    PrintDebugLine2(); PrintDebugLine2();
+    DebugPrintLineN(DM_NWRECV, "[PACKET END]");
 }
 
 #define MPU6060_INT_PIN 2
@@ -359,13 +351,13 @@ void setupMPU6050(void)
     Wire.setClock(400000); // 400kHz I2C clock. Comment this line if having compilation difficulties
 
     // initialize device
-    Serial.println("MPU6050...");
+    DebugPrintLineN(DM_SETUP, "MPU6050...");
     mpu.initialize();
     pinMode(MPU6060_INT_PIN, INPUT);
 
     if(!mpu.testConnection())
     {
-        Serial.println("Failed");
+        DebugPrintLineN(DM_SETUP, "Failed");
         while(true);
     }
 
@@ -379,7 +371,7 @@ void setupMPU6050(void)
     devStatus = mpu.dmpInitialize();
     if(devStatus != 0)
     {
-        Serial.print("Fail: DMP, "); Serial.println(devStatus);
+        DebugPrintN(DM_SETUP, "Fail: DMP, "); DebugPrintLineN(DM_SETUP, devStatus);
         while(true);
     }
 
@@ -416,7 +408,7 @@ void setup(void)
 {
     delay(2500);
     Serial.begin(9600, SERIAL_8N1);
-    Serial.println("Initializing...");
+    DebugPrintLineN(DM_SETUP, "Initializing...");
 
     debugButton.SetOnStateChangedEvent(toggleDebug);
     pinMode(15, OUTPUT);
@@ -431,8 +423,8 @@ void setup(void)
     //pinMode(D7, OUTPUT);
     SetStatus(true);
 
-    Serial.println("Done");
-    Serial.println();
+    DebugPrintLineN(DM_SETUP, "Done");
+    DebugPrintLineN(DM_SETUP);
     Serial.flush();
 }
 
@@ -443,8 +435,7 @@ void loop(void)
     distance = sonicSensor.GetDistance();
     if(obstacleNear() && movingForwards())
     {
-        PrintDebug2("Halt: Obstruction");
-        PrintDebugLine2();
+        DebugPrintLineN(DM_GENERIC, "Halt: Obstruction");
         Halt();
     }
 
@@ -453,12 +444,11 @@ void loop(void)
         Halt();
         nextAutoHalt = millis() + KA_INTERVAL;
 
-        PrintDebug2("Halt: Timeout");
-        PrintDebugLine2();
+        DebugPrintLineN(DM_GENERIC, "Halt: Timeout");
     }
 
     readDMP();
 
-    handle_data();
+    recvData();
     delay(LOOP_DELAY);
 }
