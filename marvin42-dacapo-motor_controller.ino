@@ -99,6 +99,20 @@ void Halt(void)
     motors.Halt();
 }
 
+void Run(void)
+{
+    if(obstacleNear() && movingForwards())
+    {
+        PrintDebug2("Ignored: Obstruction");
+        PrintDebugLine2();
+
+        Halt();
+        return;
+    }
+
+    motors.Run(inputdata.movement.direction.x, inputdata.movement.direction.y, inputdata.movement.power);
+}
+
 void OnPacketReceived(const packet_header_t* const hdr)
 {
     switch(hdr->type)
@@ -151,16 +165,7 @@ void OnPacketReceived(const packet_header_t* const hdr)
             PrintDebug2("rotation="); PrintDebug2("(w="); PrintDebug2(inputdata.joystickRotation.w); PrintDebug2(", x="); PrintDebug2(inputdata.joystickRotation.x); PrintDebug2(", y="); PrintDebug2(inputdata.joystickRotation.y); PrintDebug2(", z="); PrintDebug2(inputdata.joystickRotation.z); PrintDebug2(")");
             PrintDebugLine2();
 
-            if(obstacleNear() && movingForwards())
-            {
-                PrintDebug2("Ignored: Obstruction");
-                PrintDebugLine2();
-
-                Halt();
-                break;
-            }
-
-            motors.Run(inputdata.movement.direction.x, inputdata.movement.direction.y, inputdata.movement.power);
+            Run();
             break;
         }
         case CPT_MOTORPOWER:
@@ -172,16 +177,7 @@ void OnPacketReceived(const packet_header_t* const hdr)
             PrintDebug2("power="); PrintDebug2(inputdata.movement.power);
             PrintDebugLine2();
 
-            if(obstacleNear() && movingForwards())
-            {
-                PrintDebug2("Ignored: Obstruction");
-                PrintDebugLine2();
-
-                Halt();
-                break;
-            }
-
-            motors.Run(inputdata.movement.direction.x, inputdata.movement.direction.y, inputdata.movement.power);
+            Run();
             break;
         }
         case CPT_MOTORROTATION:
@@ -208,27 +204,15 @@ void OnPacketReceived(const packet_header_t* const hdr)
             PrintDebug2(", power="); PrintDebug2(inputdata.movement.power);
             PrintDebugLine2();
 
-            if(obstacleNear() && movingForwards())
-            {
-                PrintDebug2("Ignored: Obstruction");
-                PrintDebugLine2();
-
-                Halt();
-                break;
-            }
-
-            motors.Run(inputdata.movement.direction.x, inputdata.movement.direction.y, inputdata.movement.power);
+            Run();
             break;
         }
         case CPT_MOTORSTOP:
         {
-            inputdata.movement.direction = { 0.0f, 0.0f };
-            inputdata.rotation.direction =  0 ;
-
             PrintDebug2("CPT_MOTORSTOP");
             PrintDebugLine2();
 
-            motors.Halt();
+            Halt();
             break;
         }
         case PT_SYN:
@@ -395,7 +379,7 @@ void loop(void)
     {
         PrintDebug2("Halt: Obstruction");
         PrintDebugLine2();
-        motors.Halt();
+        Halt();
     }
 
     if((long)(millis() - nextAutoHalt) >= 0L)
