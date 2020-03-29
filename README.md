@@ -2,7 +2,7 @@ To build this in PlatformIO you need to use "git clone --recurse-submodules"
 
 ## BlueSMiRF setup (slave)
 | Command          | Description                                               |
-| ---------------- | ----------------------------------------------------      |
+| ---------------- | --------------------------------------------------------- |
 | GB               | Get the device's MAC address (needed for master)          |
 | SN,<em>name</em> | Set name (optional)                                       |
 | SP,<em>pin</em>  | Set PIN code                                              |
