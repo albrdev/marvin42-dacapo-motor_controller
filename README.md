@@ -1,10 +1,13 @@
 To build this in PlatformIO you need to use "git clone --recurse-submodules"
 
-BlueSMiRF setup (slave):
-SN,name         # Set name
-SP,pin          # Set PIN
-SM,0            # Set mode to slave
-SU,115200,N     # Optional: Set baud rate and parity
-SL,N            # Optional: Set only parity
-SA,4            # Set authentication mode to PIN code
-R,1             # Reboot
+## BlueSMiRF setup (slave)
+| Command          | Description                                          |
+| ---------------- | ---------------------------------------------------- |
+| SN,<em>name</em> | Set name (optional)                                  |
+| SP,<em>pin</em>  | Set PIN code                                         |
+| SU,115200,N      | Set baud rate and disable parity (must match master) |
+| SL,N             | Only disable parity (must match master)              |
+| SM,0             | Set mode to <em>slave</em>                           |
+| SA,4             | Set authentication mode to <em>PIN code</em>         |
+| GB               | Get the device's MAC address (needed for master)     |
+| R,1              | Reboot the device                                    |
