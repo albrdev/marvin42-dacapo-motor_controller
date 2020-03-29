@@ -11,24 +11,39 @@
 #include "generic.hpp"
 #include "debug.hpp"
 
+#define CommandSerial   Serial1
+
+#define PROXIMITYHALT_THRESHOLD 1.0f    // cm
+#define KEEPALIVE_INTERVAL      1000UL  // ms
+
+#define LOOP_DELAY      10UL
+
+static const Quaternion QUATERNION_INVALID(0.0f, 0.0f, 0.0f, 0.0f);
+
 DCMotorAssembly motors;
 
-#define BRAKE_THRESHOLD 15.0f   // cm
 HC_SR04 sonicSensor(22, 23);
-float distance = 0.0f;
+float distance = -1.0f;
 
 Button debugButton(13);
 
-#define D4 4
-#define D7 7
+unsigned long int nextAutoHalt = 0UL;
 
-#define CommandSerial   Serial1
-#define LOOP_DELAY      10UL
+#define PIN_SUCCESSLED  51
+#define PIN_FAILLED     50
 
-void SetStatus(const bool status)
+#define PIN_RECVLED     52
+
+void setStatusLED(const bool status)
 {
-    //digitalWrite(D4, status ? HIGH : LOW);
-    //digitalWrite(D7, !status ? HIGH : LOW);
+    digitalWrite(PIN_SUCCESSLED, status ? HIGH : LOW);
+    digitalWrite(PIN_FAILLED, !status ? HIGH : LOW);
+}
+
+void setupFail(void)
+{
+    setStatusLED(false);
+    while(true);
 }
 
 struct
@@ -46,8 +61,8 @@ struct
     } spin;
 
     Quaternion rotation;
-    Quaternion joystickRotation;
-} inputdata = { { { 0.0f, 0.0f }, 1.0f}, { 0, 0.0f }, Quaternion(), Quaternion() };
+    Quaternion remoteRotation;
+} inputdata = { { { 0.0f, 0.0f }, 1.0f}, { 0, 0.0f }, QUATERNION_INVALID, QUATERNION_INVALID };
 
 uint8_t readBuffer[64];
 size_t readOffset = 0U;
@@ -55,9 +70,6 @@ size_t readOffset = 0U;
 
 size_t packetSuccessCount = 0U;
 size_t packetFailCount = 0U;
-
-#define KA_INTERVAL 1000UL
-unsigned long int nextAutoHalt = 0UL;
 
 bool debug = false;
 #define DebugPrint2(msg)        do { if(debug) { DebugPrint(msg); } } while(false)
@@ -73,20 +85,31 @@ void toggleDebug(const bool state)
     delay(350);
 }
 
-vector2data_t calcDirection(const vector2data_t& direction, Quaternion& remoteRotation, Quaternion& localRotation)
+bool quaternionEquals(const Quaternion& a, const Quaternion& b)
 {
-    VectorFloat tmpDir(direction.x, direction.y, 0.0f);
+    return a.w == b.w && a.x == b.x && a.y == b.y && a.z == b.z;
+}
+
+vector2data_t calcDirection(const vector2data_t& input, Quaternion& remoteRotation, Quaternion& localRotation)
+{
+    VectorFloat tmpDir(input.x, input.y, 0.0f);
     Quaternion q = remoteRotation.getProduct(localRotation.getConjugate()); // q1 * inverse(q2) == q1 / q2
 
     VectorFloat globalDir = tmpDir.getRotated(&remoteRotation).getNormalized();
     VectorFloat localDir = tmpDir.getRotated(&q).getNormalized();
+
+    DebugPrintLineN(DM_GENERIC, "[DIRECTION]");
+    DebugPrintN(DM_GENERIC, "input=(x="); DebugPrintN(DM_GENERIC, tmpDir.x); DebugPrintN(DM_GENERIC, ", y="); DebugPrintN(DM_GENERIC, tmpDir.y); DebugPrintN(DM_GENERIC, "), ");
+    DebugPrintN(DM_GENERIC, "global=(x="); DebugPrintN(DM_GENERIC, globalDir.x); DebugPrintN(DM_GENERIC, ", y="); DebugPrintN(DM_GENERIC, globalDir.y); DebugPrintN(DM_GENERIC, "), ");
+    DebugPrintN(DM_GENERIC, "local=(x="); DebugPrintN(DM_GENERIC, localDir.x); DebugPrintN(DM_GENERIC, ", y="); DebugPrintN(DM_GENERIC, localDir.y); DebugPrintN(DM_GENERIC, "), ");
+    DebugPrintLineN(DM_GENERIC);
 
     return { localDir.x, localDir.y };
 }
 
 bool obstacleNear(void)
 {
-    return distance >= 0.0f && distance <= BRAKE_THRESHOLD;
+    return distance >= 0.0f && distance <= PROXIMITYHALT_THRESHOLD;
 }
 
 bool movingForwards(void)
@@ -94,28 +117,29 @@ bool movingForwards(void)
     return inputdata.movement.direction.y > 0.0f && inputdata.movement.power > 0.0f;
 }
 
-void Halt(void)
+void halt(void)
 {
     inputdata.movement.direction = { 0.0f, 0.0f };
     inputdata.spin.direction = 0;
     motors.Halt();
 }
 
-void Run(void)
+void run(void)
 {
     if(obstacleNear() && movingForwards())
     {
         DebugPrintLineN(DM_GENERIC, "Ignored: Obstruction");
 
-        Halt();
+        halt();
         return;
     }
 
     motors.Run(inputdata.movement.direction.x, inputdata.movement.direction.y, inputdata.movement.power);
 }
 
-void OnPacketReceived(const packet_header_t* const hdr)
+void onPacketReceived(const packet_header_t* const hdr)
 {
+    DebugPrintLineN(DM_NWDATA, "[DM_NWDATA]");
     switch(hdr->type)
     {
         case CPT_MOTORBALANCE:
@@ -143,21 +167,33 @@ void OnPacketReceived(const packet_header_t* const hdr)
             DebugPrintN(DM_NWDATA, "direction="); DebugPrintN(DM_NWDATA, "(x="); DebugPrintN(DM_NWDATA, inputdata.movement.direction.x); DebugPrintN(DM_NWDATA, ", y="); DebugPrintN(DM_NWDATA, inputdata.movement.direction.y); DebugPrintN(DM_NWDATA, ")");
             DebugPrintLineN(DM_NWDATA);
 
-            Run();
+            inputdata.rotation = QUATERNION_INVALID;
+            run();
             break;
         }
         case CPT_DIRQUAT:
         {
             const packet_dirquat_t* pkt = (const packet_dirquat_t*)hdr;
             memcpy(&inputdata.movement.direction, &pkt->direction, sizeof(pkt->direction));
-            inputdata.joystickRotation = Quaternion(pkt->rotation.w, pkt->rotation.x, pkt->rotation.y, pkt->rotation.z);
+            inputdata.remoteRotation = Quaternion(pkt->rotation.w, pkt->rotation.x, pkt->rotation.y, pkt->rotation.z);
 
             DebugPrintN(DM_NWDATA, "CPT_DIRQUAT: ");
             DebugPrintN(DM_NWDATA, "direction="); DebugPrintN(DM_NWDATA, "(x="); DebugPrintN(DM_NWDATA, inputdata.movement.direction.x); DebugPrintN(DM_NWDATA, ", y="); DebugPrintN(DM_NWDATA, inputdata.movement.direction.y); DebugPrintN(DM_NWDATA, "), ");
-            DebugPrintN(DM_NWDATA, "rotation="); DebugPrintN(DM_NWDATA, "(w="); DebugPrintN(DM_NWDATA, inputdata.joystickRotation.w); DebugPrintN(DM_NWDATA, ", x="); DebugPrintN(DM_NWDATA, inputdata.joystickRotation.x); DebugPrintN(DM_NWDATA, ", y="); DebugPrintN(DM_NWDATA, inputdata.joystickRotation.y); DebugPrintN(DM_NWDATA, ", z="); DebugPrintN(DM_NWDATA, inputdata.joystickRotation.z); DebugPrintN(DM_NWDATA, ")");
+            DebugPrintN(DM_NWDATA, "rotation="); DebugPrintN(DM_NWDATA, "(w="); DebugPrintN(DM_NWDATA, inputdata.remoteRotation.w); DebugPrintN(DM_NWDATA, ", x="); DebugPrintN(DM_NWDATA, inputdata.remoteRotation.x); DebugPrintN(DM_NWDATA, ", y="); DebugPrintN(DM_NWDATA, inputdata.remoteRotation.y); DebugPrintN(DM_NWDATA, ", z="); DebugPrintN(DM_NWDATA, inputdata.remoteRotation.z); DebugPrintN(DM_NWDATA, ")");
             DebugPrintLineN(DM_NWDATA);
 
-            Run();
+            if((inputdata.movement.direction.x != 0.0f || inputdata.movement.direction.y != 0.0f) && !quaternionEquals(inputdata.remoteRotation, QUATERNION_INVALID))
+            {
+                //readDMP();
+                if(!quaternionEquals(inputdata.rotation, QUATERNION_INVALID))
+                {
+                    break;
+                }
+
+                calcDirection(inputdata.movement.direction, inputdata.remoteRotation, inputdata.rotation);
+            }
+
+            run();
             break;
         }
         case CPT_MOTORPOWER:
@@ -169,7 +205,7 @@ void OnPacketReceived(const packet_header_t* const hdr)
             DebugPrintN(DM_NWDATA, "power="); DebugPrintN(DM_NWDATA, inputdata.movement.power);
             DebugPrintLineN(DM_NWDATA);
 
-            Run();
+            run();
             break;
         }
         case CPT_MOTORSPIN:
@@ -196,7 +232,7 @@ void OnPacketReceived(const packet_header_t* const hdr)
             DebugPrintN(DM_NWDATA, ", power="); DebugPrintN(DM_NWDATA, inputdata.movement.power);
             DebugPrintLineN(DM_NWDATA);
 
-            Run();
+            run();
             break;
         }
         case CPT_MOTORSTOP:
@@ -204,7 +240,7 @@ void OnPacketReceived(const packet_header_t* const hdr)
             DebugPrintN(DM_NWDATA, "CPT_MOTORSTOP");
             DebugPrintLineN(DM_NWDATA);
 
-            Halt();
+            halt();
             break;
         }
         case PT_SYN:
@@ -223,7 +259,7 @@ void OnPacketReceived(const packet_header_t* const hdr)
         }
     }
 
-    nextAutoHalt = millis() + KA_INTERVAL;
+    nextAutoHalt = millis() + KEEPALIVE_INTERVAL;
 }
 
 bool parsePacket(const uint8_t* const offset, const uint8_t* const end, size_t* const incrementSize)
@@ -231,6 +267,7 @@ bool parsePacket(const uint8_t* const offset, const uint8_t* const end, size_t* 
     const packet_header_t* hdr = (const packet_header_t*)offset;
     *incrementSize = INVALID_SIZE;
 
+    DebugPrintLineN(DM_NWPKT, "[DM_NWPKT]");
     uint16_t chksum = mkcrc16((const uint8_t* const)hdr + sizeof(hdr->chksum_header), sizeof(*hdr) - sizeof(hdr->chksum_header));
     DebugPrintN(DM_NWPKT, "Header: chksum_header="); DebugPrintN(DM_NWPKT, hexstr(&hdr->chksum_header, sizeof(hdr->chksum_header))); DebugPrintN(DM_NWPKT, ", chksum_data="); DebugPrintN(DM_NWPKT, hexstr(&hdr->chksum_data, sizeof(hdr->chksum_data)));
     DebugPrintN(DM_NWPKT, ", type="); DebugPrintN(DM_NWPKT, hdr->type); DebugPrintN(DM_NWPKT, ", size="); DebugPrintN(DM_NWPKT, hdr->size);
@@ -265,7 +302,7 @@ bool parsePacket(const uint8_t* const offset, const uint8_t* const end, size_t* 
     }
 
     *incrementSize = sizeof(*hdr) + hdr->size;
-    OnPacketReceived(hdr);
+    onPacketReceived(hdr);
     return true;
 }
 
@@ -284,16 +321,16 @@ void recvData(void)
         readOffset = 0U; // Ignore this rubbish
     }
 
-    digitalWrite(15, HIGH);
+    digitalWrite(PIN_RECVLED, HIGH);
     size_t readSize = CommandSerial.readBytes(readBuffer + readOffset, sizeof(readBuffer) - readOffset);
-    digitalWrite(15, LOW);
+    digitalWrite(PIN_RECVLED, LOW);
     readSize += readOffset;
     readOffset = 0U;
 
+    DebugPrintLineN(DM_NWRECV, "[DM_NWRECV]");
     DebugPrintN(DM_NWRECV, "Raw: size="); DebugPrintN(DM_NWRECV, readSize); DebugPrintN(DM_NWRECV, ", hex="); DebugPrintN(DM_NWRECV, hexstr(readBuffer, readSize));
     DebugPrintLineN(DM_NWRECV);
 
-    DebugPrintLineN(DM_NWRECV, "[PACKET BEGIN]");
     size_t indexOffset = 0U;
     size_t incrementSize = 0U;
     const uint8_t* const readBufferEnd = &readBuffer[readSize];
@@ -309,15 +346,14 @@ void recvData(void)
 
     if(incrementSize == INVALID_SIZE)
     {
-        DebugPrintLineN(DM_NWRECV, "[PACKET ERROR]");
         packetFailCount++;
-        SetStatus(false);
+        setStatusLED(false);
         return;
     }
     else
     {
         packetSuccessCount++;
-        SetStatus(true);
+        setStatusLED(true);
     }
 
 
@@ -327,12 +363,13 @@ void recvData(void)
         readBuffer[i] = readBuffer[indexOffset + i];
     }
 
-    DebugPrintLineN(DM_NWRECV, "[PACKET END]");
+    #if (DEBUG_MODE & ((1 << DM_NWRECV) | (1 << DM_NWPKT) | (1 << DM_NWDATA))) != 0
+    DebugPrintLine();
+    #endif
 }
 
-#define MPU6060_INT_PIN 2
+#define MPU6060_INT_PIN 3
 MPU6050 mpu;
-bool dmpReady = false;  // set true if DMP init was successful
 uint8_t mpuIntStatus;   // holds actual interrupt status byte from MPU
 uint8_t devStatus;      // return status after each device operation (0 = success, !0 = error)
 uint16_t packetSize;    // expected DMP packet size (default is 42 bytes)
@@ -358,7 +395,7 @@ void setupMPU6050(void)
     if(!mpu.testConnection())
     {
         DebugPrintLineN(DM_SETUP, "Failed");
-        while(true);
+        setupFail();
     }
 
     // supply your own gyro offsets here, scaled for min sensitivity
@@ -367,18 +404,18 @@ void setupMPU6050(void)
     mpu.setZGyroOffset(-85);
     mpu.setZAccelOffset(1788); // 1688 factory default for my test chip
 
+    // Calibration Time: generate offsets and calibrate our MPU6050
+    mpu.CalibrateAccel(6);
+    mpu.CalibrateGyro(6);
+    //mpu.PrintActiveOffsets();
+
     // load and configure the DMP
     devStatus = mpu.dmpInitialize();
     if(devStatus != 0)
     {
         DebugPrintN(DM_SETUP, "Fail: DMP, "); DebugPrintLineN(DM_SETUP, devStatus);
-        while(true);
+        setupFail();
     }
-
-    // Calibration Time: generate offsets and calibrate our MPU6050
-    mpu.CalibrateAccel(6);
-    mpu.CalibrateGyro(6);
-    mpu.PrintActiveOffsets();
 
     // turn on the DMP, now that it's ready
     mpu.setDMPEnabled(true);
@@ -387,21 +424,34 @@ void setupMPU6050(void)
     attachInterrupt(digitalPinToInterrupt(MPU6060_INT_PIN), dmpDataReady, RISING);
     mpuIntStatus = mpu.getIntStatus();
 
-    // set our DMP Ready flag so the main loop() function knows it's okay to use it
-    dmpReady = true;
-
     // get expected DMP packet size for later comparison
     packetSize = mpu.dmpGetFIFOPacketSize();
 }
 
-void readDMP(void)
+bool readDMP(void)
 {
-    if(!dmpReady || mpu.dmpGetCurrentFIFOPacket(fifoBuffer) == 0)
-    {
-        return;
-    }
+    return (mpu.getIntStatus() & 0b00001) != 0 && mpu.dmpGetCurrentFIFOPacket(fifoBuffer) != 0 && mpu.dmpGetQuaternion(&inputdata.rotation, fifoBuffer) == 0;
+}
 
-    mpu.dmpGetQuaternion(&inputdata.rotation, fifoBuffer);
+void proximityHalt(void)
+{
+    distance = sonicSensor.GetDistance();
+    if(obstacleNear() && movingForwards())
+    {
+        DebugPrintLineN(DM_GENERIC, "Halt: Obstruction");
+        halt();
+    }
+}
+
+void timedHalt(void)
+{
+    if((long)(millis() - nextAutoHalt) >= 0L)
+    {
+        halt();
+        nextAutoHalt = millis() + KEEPALIVE_INTERVAL;
+
+        DebugPrintLineN(DM_GENERIC, "Halt: Timeout");
+    }
 }
 
 void setup(void)
@@ -410,45 +460,38 @@ void setup(void)
     Serial.begin(9600, SERIAL_8N1);
     DebugPrintLineN(DM_SETUP, "Initializing...");
 
-    debugButton.SetOnStateChangedEvent(toggleDebug);
-    pinMode(15, OUTPUT);
-    digitalWrite(15, LOW);
+    pinMode(PIN_SUCCESSLED, OUTPUT);
+    digitalWrite(PIN_SUCCESSLED, LOW);
+    pinMode(PIN_FAILLED, OUTPUT);
+    digitalWrite(PIN_FAILLED, LOW);
+
+    pinMode(PIN_RECVLED, OUTPUT);
+    digitalWrite(PIN_RECVLED, LOW);
 
     CommandSerial.begin(115200, SERIAL_8N1);
     CommandSerial.setTimeout(50UL);
 
     motors.Begin();
 
-    //pinMode(D4, OUTPUT);
-    //pinMode(D7, OUTPUT);
-    SetStatus(true);
+    //setupMPU6050();
+
+    setStatusLED(true);
 
     DebugPrintLineN(DM_SETUP, "Done");
     DebugPrintLineN(DM_SETUP);
-    Serial.flush();
+    DebugFlushN(DM_SETUP);
 }
 
 void loop(void)
 {
     debugButton.Poll();
 
-    distance = sonicSensor.GetDistance();
-    if(obstacleNear() && movingForwards())
-    {
-        DebugPrintLineN(DM_GENERIC, "Halt: Obstruction");
-        Halt();
-    }
+    proximityHalt();
+    timedHalt();
 
-    if((long)(millis() - nextAutoHalt) >= 0L)
-    {
-        Halt();
-        nextAutoHalt = millis() + KA_INTERVAL;
-
-        DebugPrintLineN(DM_GENERIC, "Halt: Timeout");
-    }
-
-    readDMP();
+    //readDMP();
 
     recvData();
+
     delay(LOOP_DELAY);
 }
