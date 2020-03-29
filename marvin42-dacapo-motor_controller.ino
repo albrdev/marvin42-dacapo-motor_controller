@@ -71,20 +71,6 @@ size_t readOffset = 0U;
 size_t packetSuccessCount = 0U;
 size_t packetFailCount = 0U;
 
-bool debug = false;
-#define DebugPrint2(msg)        do { if(debug) { DebugPrint(msg); } } while(false)
-#define DebugPrintLine2(msg)    do { if(debug) { DebugPrintLine(msg); } } while(false)
-
-void toggleDebug(const bool state)
-{
-    if(!state)
-        return;
-
-    debug = !debug;
-    DebugPrintLine(debug ? "DEBUG: ON" : "DEBUG: OFF");
-    delay(350);
-}
-
 bool quaternionEquals(const Quaternion& a, const Quaternion& b)
 {
     return a.w == b.w && a.x == b.x && a.y == b.y && a.z == b.z;
@@ -484,8 +470,6 @@ void setup(void)
 
 void loop(void)
 {
-    debugButton.Poll();
-
     proximityHalt();
     timedHalt();
 
