@@ -14,12 +14,12 @@
 
 #define DataSerial              Serial1
 
-#define PROXIMITYHALT_THRESHOLD 5.0f    // cm
-#define KEEPALIVE_INTERVAL      1000UL  // ms
+#define PROXIMITYHALT_THRESHOLD 5.0f // cm
+#define KEEPALIVE_INTERVAL      (1000UL + 50UL)
 
-#define PIN_FAILLED             44
-#define PIN_SUCCESSLED          46
-#define PIN_RECVLED             48
+#define PIN_LED_FAIL            44
+#define PIN_LED_SUCCESS         46
+#define PIN_LED_RECV            48
 
 #define LOOP_DELAY              10UL
 
@@ -36,8 +36,8 @@ unsigned long int nextAutoHalt = 0UL;
 
 void setStatusLED(const bool status)
 {
-    digitalWrite(PIN_SUCCESSLED, status ? HIGH : LOW);
-    digitalWrite(PIN_FAILLED, !status ? HIGH : LOW);
+    digitalWrite(PIN_LED_SUCCESS, status ? HIGH : LOW);
+    digitalWrite(PIN_LED_FAIL, !status ? HIGH : LOW);
 }
 
 void setupFail(void)
@@ -62,7 +62,7 @@ struct
 
     Quaternion rotation;
     Quaternion remoteRotation;
-} inputdata = { { { 0.0f, 0.0f }, 1.0f}, { 0, 0.0f }, QUATERNION_INVALID, QUATERNION_INVALID };
+} inputdata = { { { 0.0f, 0.0f }, 1.0f}, { 0, 0.0f }, Quaternion(), QUATERNION_INVALID };
 
 uint8_t readBuffer[128];
 size_t readOffset = 0U;
@@ -125,7 +125,7 @@ void run(void)
 
 void onPacketReceived(const packet_header_t* const hdr)
 {
-    DebugPrintLineN(DM_NWDATA, "[DM_NWDATA]");
+    //DebugPrintLineN(DM_NWDATA, "[DM_NWDATA]");
     switch(hdr->type)
     {
         case CPT_MOTORBALANCE:
@@ -171,7 +171,7 @@ void onPacketReceived(const packet_header_t* const hdr)
             if((inputdata.movement.direction.x != 0.0f || inputdata.movement.direction.y != 0.0f) && !quaternionEquals(inputdata.remoteRotation, QUATERNION_INVALID))
             {
                 //readDMP();
-                if(!quaternionEquals(inputdata.rotation, QUATERNION_INVALID))
+                if(quaternionEquals(inputdata.rotation, QUATERNION_INVALID))
                 {
                     break;
                 }
@@ -253,7 +253,7 @@ bool parsePacket(const uint8_t* const offset, const uint8_t* const end, size_t* 
     const packet_header_t* hdr = (const packet_header_t*)offset;
     *incrementSize = INVALID_SIZE;
 
-    DebugPrintLineN(DM_NWPKT, "[DM_NWPKT]");
+    //DebugPrintLineN(DM_NWPKT, "[DM_NWPKT]");
     uint16_t chksum = mkcrc16((const uint8_t* const)hdr + sizeof(hdr->chksum_header), sizeof(*hdr) - sizeof(hdr->chksum_header));
     DebugPrintN(DM_NWPKT, "Header: chksum_header="); DebugPrintN(DM_NWPKT, hexstr(&hdr->chksum_header, sizeof(hdr->chksum_header))); DebugPrintN(DM_NWPKT, ", chksum_data="); DebugPrintN(DM_NWPKT, hexstr(&hdr->chksum_data, sizeof(hdr->chksum_data)));
     DebugPrintN(DM_NWPKT, ", type="); DebugPrintN(DM_NWPKT, hdr->type); DebugPrintN(DM_NWPKT, ", size="); DebugPrintN(DM_NWPKT, hdr->size);
@@ -307,13 +307,13 @@ void recvData(void)
         readOffset = 0U; // Ignore data
     }
 
-    digitalWrite(PIN_RECVLED, HIGH);
+    digitalWrite(PIN_LED_RECV, HIGH);
     size_t readSize = DataSerial.readBytes(readBuffer + readOffset, sizeof(readBuffer) - readOffset);
-    digitalWrite(PIN_RECVLED, LOW);
+    digitalWrite(PIN_LED_RECV, LOW);
     readSize += readOffset;
     readOffset = 0U;
 
-    DebugPrintLineN(DM_NWRECV, "[DM_NWRECV]");
+    //DebugPrintLineN(DM_NWRECV, "[DM_NWRECV]");
     DebugPrintN(DM_NWRECV, "Raw: size="); DebugPrintN(DM_NWRECV, readSize); DebugPrintN(DM_NWRECV, ", hex="); DebugPrintN(DM_NWRECV, hexstr(readBuffer, readSize));
     DebugPrintLineN(DM_NWRECV);
 
@@ -350,7 +350,7 @@ void recvData(void)
     }
 
     #if (DEBUG_MODE & ((1 << DM_NWRECV) | (1 << DM_NWPKT) | (1 << DM_NWDATA))) != 0
-    DebugPrintLine();
+    //DebugPrintLine();
     #endif
 }
 
@@ -446,20 +446,20 @@ void setup(void)
     Serial.begin(9600, SERIAL_8N1);
     DebugPrintLineN(DM_SETUP, "Initializing...");
 
-    pinMode(PIN_SUCCESSLED, OUTPUT);
-    digitalWrite(PIN_SUCCESSLED, LOW);
-    pinMode(PIN_FAILLED, OUTPUT);
-    digitalWrite(PIN_FAILLED, LOW);
+    pinMode(PIN_LED_SUCCESS, OUTPUT);
+    digitalWrite(PIN_LED_SUCCESS, LOW);
+    pinMode(PIN_LED_FAIL, OUTPUT);
+    digitalWrite(PIN_LED_FAIL, LOW);
 
-    pinMode(PIN_RECVLED, OUTPUT);
-    digitalWrite(PIN_RECVLED, LOW);
+    pinMode(PIN_LED_RECV, OUTPUT);
+    digitalWrite(PIN_LED_RECV, LOW);
 
     DataSerial.begin(115200, SERIAL_8N1);
     DataSerial.setTimeout(50UL);
 
     motors.Begin();
 
-    setupMPU6050();
+    //setupMPU6050();
 
     setStatusLED(true);
 
@@ -473,7 +473,7 @@ void loop(void)
     proximityHalt();
     timedHalt();
 
-    readDMP();
+    //readDMP();
 
     recvData();
 
