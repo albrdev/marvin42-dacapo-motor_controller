@@ -11,12 +11,12 @@
 #include "generic.hpp"
 #include "debug.hpp"
 
-#define CommandSerial   Serial1
+#define DataSerial              Serial1
 
 #define PROXIMITYHALT_THRESHOLD 1.0f    // cm
 #define KEEPALIVE_INTERVAL      1000UL  // ms
 
-#define LOOP_DELAY      10UL
+#define LOOP_DELAY              10UL
 
 static const Quaternion QUATERNION_INVALID(0.0f, 0.0f, 0.0f, 0.0f);
 
@@ -29,10 +29,10 @@ Button debugButton(13);
 
 unsigned long int nextAutoHalt = 0UL;
 
-#define PIN_SUCCESSLED  51
-#define PIN_FAILLED     50
+#define PIN_SUCCESSLED  46
+#define PIN_FAILLED     44
 
-#define PIN_RECVLED     52
+#define PIN_RECVLED     48
 
 void setStatusLED(const bool status)
 {
@@ -76,9 +76,9 @@ bool quaternionEquals(const Quaternion& a, const Quaternion& b)
     return a.w == b.w && a.x == b.x && a.y == b.y && a.z == b.z;
 }
 
-vector2data_t calcDirection(const vector2data_t& input, Quaternion& remoteRotation, Quaternion& localRotation)
+vector2data_t calcDirection(const vector2data_t& inputDirection, Quaternion& remoteRotation, Quaternion& localRotation)
 {
-    VectorFloat tmpDir(input.x, input.y, 0.0f);
+    VectorFloat tmpDir(inputDirection.x, inputDirection.y, 0.0f);
     Quaternion q = remoteRotation.getProduct(localRotation.getConjugate()); // q1 * inverse(q2) == q1 / q2
 
     VectorFloat globalDir = tmpDir.getRotated(&remoteRotation).getNormalized();
@@ -294,7 +294,7 @@ bool parsePacket(const uint8_t* const offset, const uint8_t* const end, size_t* 
 
 void recvData(void)
 {
-    if(CommandSerial.available() <= 0)
+    if(DataSerial.available() <= 0)
         return;
 
     if(readOffset >= sizeof(readBuffer))
@@ -308,7 +308,7 @@ void recvData(void)
     }
 
     digitalWrite(PIN_RECVLED, HIGH);
-    size_t readSize = CommandSerial.readBytes(readBuffer + readOffset, sizeof(readBuffer) - readOffset);
+    size_t readSize = DataSerial.readBytes(readBuffer + readOffset, sizeof(readBuffer) - readOffset);
     digitalWrite(PIN_RECVLED, LOW);
     readSize += readOffset;
     readOffset = 0U;
@@ -454,8 +454,8 @@ void setup(void)
     pinMode(PIN_RECVLED, OUTPUT);
     digitalWrite(PIN_RECVLED, LOW);
 
-    CommandSerial.begin(115200, SERIAL_8N1);
-    CommandSerial.setTimeout(50UL);
+    DataSerial.begin(115200, SERIAL_8N1);
+    DataSerial.setTimeout(50UL);
 
     motors.Begin();
 
