@@ -16,6 +16,10 @@
 #define PROXIMITYHALT_THRESHOLD 1.0f    // cm
 #define KEEPALIVE_INTERVAL      1000UL  // ms
 
+#define PIN_FAILLED             44
+#define PIN_SUCCESSLED          46
+#define PIN_RECVLED             48
+
 #define LOOP_DELAY              10UL
 
 static const Quaternion QUATERNION_INVALID(0.0f, 0.0f, 0.0f, 0.0f);
@@ -28,11 +32,6 @@ float distance = -1.0f;
 Button debugButton(13);
 
 unsigned long int nextAutoHalt = 0UL;
-
-#define PIN_FAILLED     44
-#define PIN_SUCCESSLED  46
-
-#define PIN_RECVLED     48
 
 void setStatusLED(const bool status)
 {
