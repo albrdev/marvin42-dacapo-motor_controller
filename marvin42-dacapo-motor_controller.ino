@@ -13,7 +13,7 @@
 
 #define DataSerial              Serial1
 
-#define PROXIMITYHALT_THRESHOLD 1.0f    // cm
+#define PROXIMITYHALT_THRESHOLD 5.0f    // cm
 #define KEEPALIVE_INTERVAL      1000UL  // ms
 
 #define PIN_FAILLED             44
