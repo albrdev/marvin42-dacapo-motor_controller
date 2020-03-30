@@ -29,8 +29,8 @@ Button debugButton(13);
 
 unsigned long int nextAutoHalt = 0UL;
 
-#define PIN_SUCCESSLED  46
 #define PIN_FAILLED     44
+#define PIN_SUCCESSLED  46
 
 #define PIN_RECVLED     48
 
