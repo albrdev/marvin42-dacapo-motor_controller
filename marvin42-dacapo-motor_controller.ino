@@ -63,7 +63,7 @@ struct
     Quaternion remoteRotation;
 } inputdata = { { { 0.0f, 0.0f }, 1.0f}, { 0, 0.0f }, QUATERNION_INVALID, QUATERNION_INVALID };
 
-uint8_t readBuffer[64];
+uint8_t readBuffer[128];
 size_t readOffset = 0U;
 #define INVALID_SIZE SIZE_MAX
 
@@ -303,7 +303,7 @@ void recvData(void)
         //   * The buffer on the server side is smaller than the packet that is currently receiving
         DebugPrintN(DM_NWRECV, "Buffer overflow: offset="); DebugPrintN(DM_NWRECV, readOffset); DebugPrintN(DM_NWRECV, ", max="); DebugPrintN(DM_NWRECV, sizeof(readBuffer));
         DebugPrintLineN(DM_NWRECV);
-        readOffset = 0U; // Ignore this rubbish
+        readOffset = 0U; // Ignore data
     }
 
     digitalWrite(PIN_RECVLED, HIGH);
@@ -353,7 +353,7 @@ void recvData(void)
     #endif
 }
 
-#define MPU6060_INT_PIN 3
+#define MPU6060_INT_PIN 2
 MPU6050 mpu;
 uint8_t mpuIntStatus;   // holds actual interrupt status byte from MPU
 uint8_t devStatus;      // return status after each device operation (0 = success, !0 = error)
@@ -458,7 +458,7 @@ void setup(void)
 
     motors.Begin();
 
-    //setupMPU6050();
+    setupMPU6050();
 
     setStatusLED(true);
 
@@ -472,7 +472,7 @@ void loop(void)
     proximityHalt();
     timedHalt();
 
-    //readDMP();
+    readDMP();
 
     recvData();
 
