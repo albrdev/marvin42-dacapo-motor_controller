@@ -1,5 +1,6 @@
 #include <stdint.h>
 #include <stdarg.h>
+#include <Wire.h>
 #include "I2Cdev.h"
 #include "MPU6050_6Axis_MotionApps20.h"
 #include "DCMotorAssembly.hpp"
@@ -230,8 +231,8 @@ void onPacketReceived(const packet_header_t* const hdr)
         }
         case PT_SYN:
         {
-            DebugPrintN(DM_NWDATA, "PT_SYN");
-            DebugPrintLineN(DM_NWDATA);
+            DebugPrintN(DM_NWEXTRA, "PT_SYN");
+            DebugPrintLineN(DM_NWEXTRA);
 
             break;
         }
