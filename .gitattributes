@@ -102,3 +102,8 @@ GNUmakefile     text eol=lf
 *.[tT][xX][tT]  text eol=lf
 
 *.ino           text diff=cpp
+
+*.png           binary
+*.svg           text
+
+*.fzz           binary
